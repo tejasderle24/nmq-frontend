@@ -89,7 +89,14 @@ export const recordAdvertisementImpressionApi = async (adId) => {
   return response.data;
 };
 
-export const recordAdvertisementClickApi = async (adId) => {
-  const response = await api.post(`/advertisements/${adId}/click`);
+export const recordAdvertisementClickApi = async (adId, payload) => {
+  const response = await api.post(
+    `/advertisements/${adId}/click`,
+    {
+      adId,
+      ...payload,
+    }
+  );
+
   return response.data;
 };

@@ -31,10 +31,12 @@ export default function CheckToken() {
 
     try {
       setLoading(true)
-      
+
       // Real Backend API Call
       const response = await api.get(`/tokens/checkmytoken?mobile=${mobile.trim()}`)
       const data = response.data
+
+      console.log(" check token data", data)
 
       if (!data.success || !data.tokens || data.tokens.length === 0) {
         setNotFound(true)
@@ -49,19 +51,41 @@ export default function CheckToken() {
       localStorage.setItem("currentMobile", token.mobile)
       localStorage.setItem("currentShop", JSON.stringify({ shopId: token.shopId, shopName: token.shopName || "Queue Shop" }))
 
-      // Status ke mutabiq navigation ya message show karna
+      // Handle token status
       if (token.status === 'waiting') {
         navigate('/queue-status')
       } else if (token.status === 'called') {
-        navigate('/final-call', { state: { token, tokenId: token.id, mobile: token.mobile } })
+        navigate('/final-call', {
+          state: {
+            token,
+            tokenId: token._id,
+            mobile: token.mobile,
+          },
+        })
+      } else if (token.status === 'not_arrived') {
+        setInfoMessage(
+          '⚠️ You have not arrived at the shop yet. Please reach the shop as soon as possible.'
+        )
+      } else if (token.status === 'cancel') {
+        setInfoMessage(
+          '❌ Your token has been cancelled. Please generate a new token to join the queue.'
+        )
+      } else if (token.status === 'arrived') {
+        setInfoMessage(
+          '✅ You have arrived at the shop.'
+        )
       } else if (token.status === 'serving') {
-        setInfoMessage('✅ You have already received your table. Please enjoy your meal!')
-        return
+        setInfoMessage(
+          '🍽️ Your turn is in progress. Please enjoy your meal!'
+        )
       } else if (token.status === 'completed') {
-        setInfoMessage('✅ Your visit has been completed. Thank you for dining with us!')
-        return
+        setInfoMessage(
+          '✅ Your visit has been completed. Thank you for dining with us!'
+        )
       } else {
-        navigate('/queue-status')
+        setInfoMessage(
+          `Your token status is "${token.status}". Please contact the shop for assistance.`
+        )
       }
 
     } catch (err) {
@@ -101,9 +125,9 @@ export default function CheckToken() {
         {/* Advertisement Carousel */}
         <div className="mb-6">
           <AdvertisementCarousel
-            shopId={null}
             placement="check_token"
           />
+          
         </div>
 
         {/* Main Card Container */}

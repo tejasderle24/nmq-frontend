@@ -17,6 +17,8 @@ export default function TokenConfirmed() {
     }
 
     const [activeToken, setActiveToken] = useState(initialToken)
+    console.log("===activeToken===",activeToken);
+    
     const [shop] = useState(location.state?.shop || null)
     
     const [groupsAhead, setGroupsAhead] = useState(
@@ -32,9 +34,6 @@ export default function TokenConfirmed() {
     const [error, setError] = useState('')
 
     const tokenId = activeToken?.id || location.state?.tokenId
-
-    const tokenNumber = activeToken?.token_no ?? activeToken?.token_number ?? '05'
-    const peopleCount = activeToken?.group_size ?? activeToken?.people_count ?? 3
 
     // Optional: Fetch latest token details if tokenId is present
     useEffect(() => {
@@ -195,7 +194,7 @@ export default function TokenConfirmed() {
                                 <path d="M13 5v2" /><path d="M13 17v2" /><path d="M13 11v2" />
                             </svg>
                             <span className="text-[22px] font-bold text-[#F2793A] tracking-tight">
-                                {activeToken.queue_type || 'Q2'}-{tokenNumber}
+                                {activeToken.queueType || 'Q2'}-{activeToken.tokenNo}
                             </span>
                         </div>
 
@@ -221,7 +220,7 @@ export default function TokenConfirmed() {
                             </svg>
                             <span className="text-xs font-medium text-[#8A7F71]">No. of Guest</span>
                             <span className="text-[15px] font-bold text-[#2B2118]">
-                                {peopleCount} {peopleCount === 1 ? 'Guest' : 'Guests'}
+                                {activeToken?.groupSize} {activeToken?.groupSize === 1 ? 'Guest' : 'Guests'}
                             </span>
                         </div>
 

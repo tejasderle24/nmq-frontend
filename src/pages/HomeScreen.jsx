@@ -19,6 +19,7 @@ import {
 } from 'lucide-react'
 import AdvertisementCarousel from '../components/AdvertisementCarousel'
 import MisalLoader from '../components/MisalLoader'
+import { useTokenStore } from '../store/token.store'
 
 export default function HomeScreen() {
     const navigate = useNavigate()
@@ -31,6 +32,19 @@ export default function HomeScreen() {
     const [searchTerm, setSearchTerm] = useState('')
     const [activeFilter, setActiveFilter] = useState('all')
 
+    const currentTokenId = useTokenStore(
+        (state) => state.currentTokenId
+    );
+    const currentMobile = useTokenStore(
+        (state) => state.currentMobile
+    );
+    const currentShop = useTokenStore(
+        (state) => state.currentShop
+    );
+    const currentCustomerName = useTokenStore(
+        (state) => state.currentCustomerName
+    );
+
     const quickFilters = [
         { id: 'all', label: 'All Shops', icon: UtensilsCrossed },
         { id: 'open', label: 'Open Now', icon: Sparkles },
@@ -40,7 +54,7 @@ export default function HomeScreen() {
     // ==========================================
     // 1. FETCH ALL SHOPS (GET)
     // ==========================================
-// ==========================================
+    // ==========================================
     // 1. FETCH ALL SHOPS (GET)
     // ==========================================
     const fetchShops = async () => {
@@ -259,7 +273,6 @@ export default function HomeScreen() {
                 {/* Advertisement */}
                 <div className="mt-4 px-4">
                     <AdvertisementCarousel
-                        shopId={null}
                         placement="shop_list"
                     />
                 </div>

@@ -6,7 +6,8 @@ import {
   Bell,
   TimerReset,
   CheckCircle2,
-  AlertTriangle
+  AlertTriangle,
+  AlertTriangleIcon
 } from 'lucide-react'
 import backgroundImage from '../assets/background.png'
 import AdvertisementCarousel from '../components/AdvertisementCarousel'
@@ -140,7 +141,7 @@ export default function FinalCall() {
     const playBell = () => {
       navigator.vibrate?.([500, 300, 500, 300, 500])
       bellRef.current.currentTime = 0
-      bellRef.current.play().catch(() => {})
+      bellRef.current.play().catch(() => { })
     }
 
     playBell()
@@ -195,12 +196,12 @@ export default function FinalCall() {
       }
 
       const updatedToken = result?.token || result?.data?.token || result?.data || liveToken
-      
+
       stopBell()
-      navigate('/arrived', {
-        replace: true,
-        state: { token: updatedToken },
-      })
+      // navigate('/arrived', {
+      //   replace: true,
+      //   state: { token: updatedToken },
+      // })
     } catch (error) {
       console.error("I'm Here failed:", error)
       setError(
@@ -220,9 +221,8 @@ export default function FinalCall() {
 
   return (
     <div
-      className={`min-h-screen w-full bg-[#F8F4EA] bg-top bg-repeat-y flex justify-center p-3 sm:p-5 md:p-8 transition-all duration-450 ease-out ${
-        pageReady ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-5'
-      }`}
+      className={`min-h-screen w-full bg-[#F8F4EA] bg-top bg-repeat-y flex justify-center p-3 sm:p-5 md:p-8 transition-all duration-450 ease-out ${pageReady ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-5'
+        }`}
       style={{
         backgroundImage: `url(${backgroundImage})`,
         backgroundSize: '100% auto'
@@ -319,9 +319,8 @@ export default function FinalCall() {
 
           <div className="text-center">
             <div
-              className={`text-5xl sm:text-6xl md:text-7xl font-extrabold tracking-tight leading-none ${
-                seconds <= 15 ? 'fc-timer-low text-red-600' : 'text-emerald-600'
-              }`}
+              className={`text-5xl sm:text-6xl md:text-7xl font-extrabold tracking-tight leading-none ${seconds <= 15 ? 'fc-timer-low text-red-600' : 'text-emerald-600'
+                }`}
             >
               {Math.floor(seconds / 60)}:{String(seconds % 60).padStart(2, '0')}
             </div>
@@ -343,8 +342,11 @@ export default function FinalCall() {
           <button
             type="button"
             onClick={handleImHere}
-            disabled={loading || hasConfirmed}
-            className="w-full h-14 sm:h-16 mt-6 bg-gradient-to-r from-emerald-600 to-emerald-500 rounded-2xl text-white font-bold text-base sm:text-lg flex items-center justify-center gap-2.5 cursor-pointer shadow-lg active:scale-[0.98] transition-all"
+            disabled={loading || hasConfirmed || timerExpired}
+            className={`w-full h-14 sm:h-16 mt-6 rounded-2xl text-white font-bold text-base sm:text-lg flex items-center justify-center gap-2.5 shadow-lg transition-all ${loading || hasConfirmed || timerExpired
+                ? 'bg-gray-400 cursor-not-allowed opacity-70'
+                : 'bg-gradient-to-r from-emerald-600 to-emerald-500 cursor-pointer active:scale-[0.98]'
+              }`}
           >
             {loading ? (
               <>
@@ -355,6 +357,11 @@ export default function FinalCall() {
               <>
                 <CheckCircle2 className="w-5 h-5" />
                 <span>Confirmed — Waiting for Staff</span>
+              </>
+            ) : timerExpired ? (
+              <>
+                <AlertTriangleIcon className="w-5 h-5" />
+                <span>Time Expired</span>
               </>
             ) : (
               <>
@@ -374,7 +381,6 @@ export default function FinalCall() {
         {/* ADVERTISEMENT */}
         <div className="mt-1">
           <AdvertisementCarousel
-            shopId={null}
             placement="final_call"
           />
         </div>

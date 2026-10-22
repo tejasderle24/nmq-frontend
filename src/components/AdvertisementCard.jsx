@@ -1,176 +1,124 @@
-// import React, { useState } from 'react'
-// import { ImageOff, ExternalLink } from 'lucide-react'
-// import {
-//   recordAdvertisementImpressionApi,
-//   recordAdvertisementClickApi,
-// } from "../api/advertisements.api";
-
-// export function AdvertisementCard({ advertisement, onClick }) {
-//   const [loaded, setLoaded] = useState(false)
-//   const [error, setError] = useState(false)
-
-//   if (!advertisement) return null
-
-//   const handleClick = () => {
-//     if (onClick) onClick()
-
-//     if (advertisement.redirect_url) {
-//       window.open(
-//         advertisement.redirect_url,
-//         '_blank',
-//         'noopener,noreferrer'
-//       )
-//     }
-//   }
-
-//   return (
-//     <div
-//       onClick={handleClick}
-//       className={`group relative w-full aspect-[8/3] overflow-hidden rounded-2xl sm:rounded-3xl bg-white border border-amber-100/60 shadow-md hover:shadow-lg transition-all duration-300 ease-out active:scale-[0.985] ${
-//         advertisement.redirect_url ? 'cursor-pointer' : 'cursor-default'
-//       }`}
-//     >
-//       {/* Loading Skeleton */}
-//       {!loaded && !error && (
-//         <div className="absolute inset-0 bg-gradient-to-r from-gray-100 via-gray-200 to-gray-100 bg-[length:200%_100%] animate-pulse" />
-//       )}
-
-//       {/* Image Error Fallback */}
-//       {error ? (
-//         <div className="w-full h-full flex flex-col justify-center items-center bg-gray-50 text-gray-400 gap-2 p-4">
-//           <ImageOff className="w-6 h-6 sm:w-8 sm:h-8 text-gray-300" />
-//           <span className="text-xs sm:text-sm font-medium">
-//             Advertisement unavailable
-//           </span>
-//         </div>
-//       ) : (
-//         <img
-//           src={advertisement.image_url}
-//           alt={advertisement.event_title || 'Advertisement'}
-//           loading="lazy"
-//           draggable={false}
-//           onLoad={() => setLoaded(true)}
-//           onError={() => setError(true)}
-//           className={`w-full h-full object-cover transition-opacity duration-300 select-none ${
-//             loaded ? 'opacity-100' : 'opacity-0'
-//           }`}
-//         />
-//       )}
-
-//       {/* CTA Button */}
-//       {advertisement.cta_text && advertisement.redirect_url && (
-//         <div className="absolute right-3 bottom-3 sm:right-4 sm:bottom-4 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full bg-white/90 backdrop-blur-md text-[#E65100] text-xs sm:text-sm font-bold shadow-md border border-white/80 pointer-events-none flex items-center gap-1 group-hover:bg-white transition-colors">
-//           <span>{advertisement.cta_text}</span>
-//           <ExternalLink className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-//         </div>
-//       )}
-//     </div>
-//   )
-// }
-
-
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { ImageOff, ExternalLink } from "lucide-react";
 import {
-  recordAdvertisementImpressionApi,
   recordAdvertisementClickApi,
+  recordAdvertisementImpressionApi,
 } from "../api/advertisements.api";
 
-export function AdvertisementCard({ advertisement, onClick }) {
+export function AdvertisementCard({
+  advertisement,
+  onClick,
+  shopId,
+  placement,
+  customer,
+}) {
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(false);
-
-  // Prevent duplicate impression
   const [impressionRecorded, setImpressionRecorded] = useState(false);
+
+  useEffect(() => {
+    setLoaded(false);
+    setError(false);
+    setImpressionRecorded(false);
+  }, [advertisement?._id]);
 
   if (!advertisement) return null;
 
-  const advertisementId = advertisement.id;
+  const advertisementId =
+    advertisement._id ?? advertisement.id;
+
+  const imageUrl =
+    advertisement.image_url ?? advertisement.imageUrl;
+
+  const redirectUrl =
+    advertisement.redirect_url ?? advertisement.redirectUrl;
+
+  const eventTitle =
+    advertisement.event_title ??
+    advertisement.eventTitle ??
+    "Advertisement";
+
+  const ctaText =
+    advertisement.cta_text ?? advertisement.ctaText;
 
   const recordImpression = async () => {
     if (!advertisementId || impressionRecorded) return;
 
+    // Prevent duplicate requests while the request is in progress.
+    setImpressionRecorded(true);
+
     try {
       await recordAdvertisementImpressionApi(advertisementId);
-      setImpressionRecorded(true);
     } catch (error) {
-      console.error("Failed to record advertisement impression:", error);
+      setImpressionRecorded(false);
+      console.error("Failed to record impression:", error);
     }
   };
 
   const handleClick = async () => {
-    // Record click
-    if (advertisementId) {
-      try {
-        await recordAdvertisementClickApi(advertisementId);
-      } catch (error) {
-        console.error("Failed to record advertisement click:", error);
-      }
+    // Pass the exact props received from the parent.
+    try {
+      await recordAdvertisementClickApi(advertisementId, {
+        shopId,
+        placement,
+        customer,
+      });
+    } catch (error) {
+      console.error("Failed to record advertisement click:", error);
     }
 
-    // Parent callback
-    if (onClick) {
-      onClick();
-    }
+    onClick?.(advertisement);
 
-    // Redirect
-    if (advertisement.redirect_url) {
-      window.open(
-        advertisement.redirect_url,
-        "_blank",
-        "noopener,noreferrer"
-      );
+    if (redirectUrl) {
+      window.open(redirectUrl, "_blank", "noopener,noreferrer");
     }
   };
 
   return (
     <div
       onClick={handleClick}
-      className={`group relative w-full aspect-[8/3] overflow-hidden rounded-2xl sm:rounded-3xl bg-white border border-amber-100/60 shadow-md hover:shadow-lg transition-all duration-300 ease-out active:scale-[0.985] ${
-        advertisement.redirect_url
-          ? "cursor-pointer"
-          : "cursor-default"
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          handleClick();
+        }
+      }}
+      role="link"
+      tabIndex={0}
+      className={`group relative w-full aspect-[8/3] overflow-hidden rounded-2xl sm:rounded-3xl bg-white border border-amber-100/60 shadow-md hover:shadow-lg transition-all duration-300 ${
+        redirectUrl ? "cursor-pointer" : "cursor-default"
       }`}
     >
-      {/* Loading Skeleton */}
       {!loaded && !error && (
-        <div className="absolute inset-0 bg-gradient-to-r from-gray-100 via-gray-200 to-gray-100 bg-[length:200%_100%] animate-pulse" />
+        <div className="absolute inset-0 animate-pulse bg-gray-200" />
       )}
 
-      {/* Image */}
       {error ? (
-        <div className="w-full h-full flex flex-col justify-center items-center bg-gray-50 text-gray-400 gap-2 p-4">
-          <ImageOff className="w-6 h-6 sm:w-8 sm:h-8 text-gray-300" />
-
-          <span className="text-xs sm:text-sm font-medium">
-            Advertisement unavailable
-          </span>
+        <div className="w-full h-full flex flex-col items-center justify-center gap-2 bg-gray-50 text-gray-400">
+          <ImageOff className="w-8 h-8" />
+          <span className="text-sm">Advertisement unavailable</span>
         </div>
       ) : (
         <img
-          src={advertisement.image_url}
-          alt={advertisement.event_title || "Advertisement"}
+          src={imageUrl}
+          alt={eventTitle}
           loading="lazy"
           draggable={false}
           onLoad={() => {
             setLoaded(true);
-
-            // Image loaded = impression
-            recordImpression();
+            if (!impressionRecorded) recordImpression();
           }}
           onError={() => setError(true)}
-          className={`w-full h-full object-cover transition-opacity duration-300 select-none ${
+          className={`w-full h-full object-cover transition-opacity duration-300 ${
             loaded ? "opacity-100" : "opacity-0"
           }`}
         />
       )}
 
-      {/* CTA */}
-      {advertisement.cta_text && advertisement.redirect_url && (
-        <div className="absolute right-3 bottom-3 sm:right-4 sm:bottom-4 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full bg-white/90 backdrop-blur-md text-[#E65100] text-xs sm:text-sm font-bold shadow-md border border-white/80 pointer-events-none flex items-center gap-1 group-hover:bg-white transition-colors">
-          <span>{advertisement.cta_text}</span>
-
-          <ExternalLink className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+      {ctaText && redirectUrl && (
+        <div className="absolute right-3 bottom-3 px-4 py-2 rounded-full bg-white/90 text-[#E65100] text-sm font-bold shadow-md flex items-center gap-1 pointer-events-none">
+          <span>{ctaText}</span>
+          <ExternalLink className="w-4 h-4" />
         </div>
       )}
     </div>

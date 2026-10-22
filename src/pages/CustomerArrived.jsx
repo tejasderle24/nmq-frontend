@@ -226,7 +226,6 @@ export default function CustomerArrived() {
 
             <div className="mt-1">
               <AdvertisementCarousel
-                shopId={null}
                 placement="arrived"
               />
             </div>

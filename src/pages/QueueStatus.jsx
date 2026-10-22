@@ -415,7 +415,6 @@ export default function QueueStatus() {
 
           {/* ADVERTISEMENT */}
           <AdvertisementCarousel
-            shopId={null}
             placement="queue_status"
           />
 

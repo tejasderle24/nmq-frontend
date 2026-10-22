@@ -146,10 +146,6 @@ export default function ProfilePage() {
           String(formattedShop.id)
         );
 
-        console.log(
-          "Shop ID saved in localStorage:",
-          formattedShop.id
-        );
       }
 
       // Set display data

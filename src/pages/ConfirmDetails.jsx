@@ -19,6 +19,7 @@ import { createTokenApi } from "../api/token.api";
 import { useEffect } from 'react';
 import { getShopByIdApi } from '../api/shop.api';
 import SimpleLoader from '../components/SimpleLoader';
+import { useTokenStore } from "../store/token.store";
 
 export default function ConfirmDetails() {
   const navigate = useNavigate()
@@ -34,6 +35,10 @@ export default function ConfirmDetails() {
   const [error, setError] = useState('')
 
   const isQueuePaused = (shop?.queueStatus || '').toLowerCase() === 'paused' || (shop?.queueStatus || '').toLowerCase() === 'pause'
+
+  const setCurrentToken = useTokenStore(
+    (state) => state.setCurrentToken
+  );
 
   useEffect(() => {
     const fetchShop = async () => {
@@ -173,6 +178,18 @@ export default function ConfirmDetails() {
         throw new Error("Token was not created.");
       }
 
+      const shopData = {
+        shopId: shop.id,
+        shopName: shop.shopName,
+      };
+
+      setCurrentToken({
+        tokenId: createdToken.id,
+        mobile: trimmedMobile,
+        name: trimmedName,
+        shop: shopData,
+      });
+
       navigate("/token-conform", {
         state: {
           tokenId: createdToken.id,
@@ -300,7 +317,7 @@ export default function ConfirmDetails() {
                         const cleaned = e.target.value.replace(/[^a-zA-Z\s]/g, '');
                         const capitalized = cleaned.replace(/\b\w/g, (l) => l.toUpperCase());
                         setName(capitalized);
-                      }} 
+                      }}
                       className="w-full border-none outline-none text-sm sm:text-base font-semibold text-[#2c1000] bg-transparent placeholder-gray-400"
                     />
                   </div>

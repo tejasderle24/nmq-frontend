@@ -99,29 +99,6 @@ const normalizeTodaySummary = (data) => {
   };
 };
 
-// const fetchOwnerDashboardData = async (userId) => {
-//   const shopResponse = await api.get(`/shops/profile/${userId}`);
-//   const shopPayload = getPayload(shopResponse);
-//   const shop = shopPayload?.shop ?? shopPayload;
-//   const shopId = shop?.id ?? shop?._id;
-
-//   if (!shopId) {
-//     throw new Error('Shop ID was not returned for this owner.');
-//   }
-
-//   const dashboardResponse = await api.get(`/dashboard/owner/${shopId}`);
-//   const dashboardPayload = getPayload(dashboardResponse);
-//   const dashboard = dashboardPayload?.dashboard ?? dashboardPayload;
-
-//   return {
-//     shop,
-//     shopName: shop?.shopName ?? shop?.name ?? '',
-//     liveQueue: normalizeLiveQueue(dashboard),
-//     todaySummary: normalizeTodaySummary(dashboard)
-//   };
-// };
-
-
 const fetchOwnerDashboardData = async (userId) => {
   const shopResponse = await api.get(`/shops/profile/${userId}`);
 
@@ -134,532 +111,542 @@ const fetchOwnerDashboardData = async (userId) => {
     throw new Error('Shop ID was not returned for this owner.');
   }
 
-  const dashboardResponse = await api.get(`/dashboard/owner/${shopId}`);
-
-  const dashboardPayload = getPayload(dashboardResponse);
-  const dashboard = dashboardPayload?.dashboard ?? dashboardPayload;
-
-  return {
-    shop,
-    shopId,
-
-    shopName: shop?.shopName ?? shop?.name ?? '',
-
-    // Actual DB status fields
-    shopStatus: shop?.shopStatus ?? shop?.shop_status ?? 'inactive',
-
-    shopOpenStatus:
-      shop?.shopOpenStatus ??
-      shop?.shop_open_status ??
-      'close',
-
-    queueStatus:
-      shop?.queueStatus ??
-      shop?.queue_status ??
-      'pause',
-
-    liveQueue: normalizeLiveQueue(dashboard),
-    todaySummary: normalizeTodaySummary(dashboard)
-  };
-};
-
-
-const INITIAL_STAFF_STATUS = [
-  {
-    id: 's1',
-    staff_id: 'STF-101',
-    full_name: 'Sarah Connor',
-    role: 'counter',
-    is_logged_in: true,
-    login_time: '2026-09-19T08:30:00Z'
-  },
-  {
-    id: 's2',
-    staff_id: 'STF-102',
-    full_name: 'John Doe',
-    role: 'staff',
-    is_logged_in: true,
-    selected_section: 'Q4',
-    selected_section_login_time: '2026-09-19T09:15:00Z'
-  },
-  {
-    id: 's3',
-    staff_id: 'STF-103',
-    full_name: 'Emma Watson',
-    role: 'staff',
-    is_logged_in: true,
-    selected_section: 'Q8',
-    selected_section_login_time: '2026-09-19T10:00:00Z'
+  // ==========================================
+  // SAVE SHOP ID IN LOCAL STORAGE
+  // ==========================================
+  if (shopId) {
+    localStorage.setItem(
+      "shopId",
+      String(shopId)
+    );
   }
-];
 
-export default function OwnerDashboard() {
+    const dashboardResponse = await api.get(`/dashboard/owner/${shopId}`);
 
-  const { user } = useAuthStore();
+    const dashboardPayload = getPayload(dashboardResponse);
+    const dashboard = dashboardPayload?.dashboard ?? dashboardPayload;
 
-  const [shopStatus, setShopStatus] = useState('inactive');
-  const [shopOpenStatus, setShopOpenStatus] = useState('close');
-  const [queueStatus, setQueueStatus] = useState('pause');
+    return {
+      shop,
+      shopId,
 
-  const [shopActionLoading, setShopActionLoading] = useState(false);
-  const [queueActionLoading, setQueueActionLoading] = useState(false);
+      shopName: shop?.shopName ?? shop?.name ?? '',
 
-  const [shopName, setShopName] = useState('');
-  const [liveQueue, setLiveQueue] = useState(EMPTY_LIVE_QUEUE);
-  const [todaySummary, setTodaySummary] = useState(EMPTY_TODAY_SUMMARY);
-  const [staffStatus, setStaffStatus] = useState(INITIAL_STAFF_STATUS);
+      // Actual DB status fields
+      shopStatus: shop?.shopStatus ?? shop?.shop_status ?? 'inactive',
 
-  const [message, setMessage] = useState('');
-  const [sending, setSending] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
-  const [dashboardLoading, setDashboardLoading] = useState(Boolean(user?.id));
-  const [dashboardError, setDashboardError] = useState('');
-  const isOpen = shopOpenStatus === 'open';
-  const isActive = queueStatus === 'start';
+      shopOpenStatus:
+        shop?.shopOpenStatus ??
+        shop?.shop_open_status ??
+        'close',
 
-  useEffect(() => {
-    if (!user?.id) {
-      return undefined;
-    }
+      queueStatus:
+        shop?.queueStatus ??
+        shop?.queue_status ??
+        'pause',
 
-    let cancelled = false;
-
- fetchOwnerDashboardData(user.id)
-  .then(
-    ({
-      shopName: name,
-      liveQueue: queueData,
-      todaySummary: summaryData,
-      shopStatus: currentShopStatus,
-      shopOpenStatus: currentShopOpenStatus,
-      queueStatus: currentQueueStatus
-    }) => {
-      if (cancelled) return;
-
-      setShopName(name);
-
-      setShopStatus(currentShopStatus);
-      setShopOpenStatus(currentShopOpenStatus);
-      setQueueStatus(currentQueueStatus);
-
-      setLiveQueue(queueData);
-      setTodaySummary(summaryData);
-    }
-  )
-  .catch((error) => {
-    if (!cancelled) {
-      setDashboardError(
-        error.response?.data?.message ||
-        error.message ||
-        'Unable to load dashboard data.'
-      );
-    }
-  })
-  .finally(() => {
-    if (!cancelled) setDashboardLoading(false);
-  });
-
-
-    return () => {
-      cancelled = true;
+      liveQueue: normalizeLiveQueue(dashboard),
+      todaySummary: normalizeTodaySummary(dashboard)
     };
-  }, [user?.id]);
+  };
 
-  // Section filter
-  const [activeSections, setActiveSections] = useState(['all']);
 
-  // Dynamic status check
-  const isSectionActive = (key) => activeSections.includes('all') || activeSections.includes(key);
-
-  // Toggle filter sections
-  const handleSectionClick = (key) => {
-    if (key === 'all') {
-      setActiveSections(['all']);
-      return;
+  const INITIAL_STAFF_STATUS = [
+    {
+      id: 's1',
+      staff_id: 'STF-101',
+      full_name: 'Sarah Connor',
+      role: 'counter',
+      is_logged_in: true,
+      login_time: '2026-09-19T08:30:00Z'
+    },
+    {
+      id: 's2',
+      staff_id: 'STF-102',
+      full_name: 'John Doe',
+      role: 'staff',
+      is_logged_in: true,
+      selected_section: 'Q4',
+      selected_section_login_time: '2026-09-19T09:15:00Z'
+    },
+    {
+      id: 's3',
+      staff_id: 'STF-103',
+      full_name: 'Emma Watson',
+      role: 'staff',
+      is_logged_in: true,
+      selected_section: 'Q8',
+      selected_section_login_time: '2026-09-19T10:00:00Z'
     }
-    setActiveSections((prev) => {
-      const current = prev.filter((item) => item !== 'all');
-      if (current.includes(key)) {
-        const updated = current.filter((item) => item !== key);
-        return updated.length === 0 ? ['all'] : updated;
+  ];
+
+  export default function OwnerDashboard() {
+
+    const { user } = useAuthStore();
+
+    const [shopStatus, setShopStatus] = useState('inactive');
+    const [shopOpenStatus, setShopOpenStatus] = useState('close');
+    const [queueStatus, setQueueStatus] = useState('pause');
+
+    const [shopActionLoading, setShopActionLoading] = useState(false);
+    const [queueActionLoading, setQueueActionLoading] = useState(false);
+
+    const [shopName, setShopName] = useState('');
+    const [liveQueue, setLiveQueue] = useState(EMPTY_LIVE_QUEUE);
+    const [todaySummary, setTodaySummary] = useState(EMPTY_TODAY_SUMMARY);
+    const [staffStatus, setStaffStatus] = useState(INITIAL_STAFF_STATUS);
+
+    const [message, setMessage] = useState('');
+    const [sending, setSending] = useState(false);
+    const [refreshing, setRefreshing] = useState(false);
+    const [dashboardLoading, setDashboardLoading] = useState(Boolean(user?.id));
+    const [dashboardError, setDashboardError] = useState('');
+    const isOpen = shopOpenStatus === 'open';
+    const isActive = queueStatus === 'start';
+
+    useEffect(() => {
+      if (!user?.id) {
+        return undefined;
       }
-      return [...current, key];
-    });
-  };
 
-  // Actions
-  const refreshDashboard = async () => {
-    if (!user?.id) return;
+      let cancelled = false;
 
-    setRefreshing(true);
-    setDashboardError('');
-    try {
-      const {
-        shopName: name,
-        liveQueue: queueData,
-        todaySummary: summaryData,
-        shopStatus: currentShopStatus,
-        shopOpenStatus: currentShopOpenStatus,
-        queueStatus: currentQueueStatus
-      } = await fetchOwnerDashboardData(user.id);
-      setShopName(name);
-      setShopStatus(currentShopStatus);
-      setShopOpenStatus(currentShopOpenStatus);
-      setQueueStatus(currentQueueStatus);
-      setLiveQueue(queueData);
-      setTodaySummary(summaryData);
-    } catch (error) {
-      setDashboardError(error.response?.data?.message || error.message || 'Unable to load dashboard data.');
-    } finally {
-      setRefreshing(false);
-    }
-  };
-const toggleShop = async () => {
-  if (!user?.id || shopActionLoading) return;
+      fetchOwnerDashboardData(user.id)
+        .then(
+          ({
+            shopName: name,
+            liveQueue: queueData,
+            todaySummary: summaryData,
+            shopStatus: currentShopStatus,
+            shopOpenStatus: currentShopOpenStatus,
+            queueStatus: currentQueueStatus
+          }) => {
+            if (cancelled) return;
 
-  try {
-    setShopActionLoading(true);
-    setDashboardError('');
+            setShopName(name);
 
-    // Get shop ID
-    const shopResponse = await api.get(`/shops/profile/${user.id}`);
-    const shopPayload = getPayload(shopResponse);
-    const shop = shopPayload?.shop ?? shopPayload;
+            setShopStatus(currentShopStatus);
+            setShopOpenStatus(currentShopOpenStatus);
+            setQueueStatus(currentQueueStatus);
 
-    const shopId = shop?.id ?? shop?._id;
+            setLiveQueue(queueData);
+            setTodaySummary(summaryData);
+          }
+        )
+        .catch((error) => {
+          if (!cancelled) {
+            setDashboardError(
+              error.response?.data?.message ||
+              error.message ||
+              'Unable to load dashboard data.'
+            );
+          }
+        })
+        .finally(() => {
+          if (!cancelled) setDashboardLoading(false);
+        });
 
-    if (!shopId) {
-      throw new Error('Shop ID was not found.');
-    }
 
-    const nextStatus =
-      shopOpenStatus === 'open' ? 'close' : 'open';
+      return () => {
+        cancelled = true;
+      };
+    }, [user?.id]);
 
-    const response = await api.patch(
-      `/shops/${shopId}/shop-status`,
-      {
-        shopOpenStatus: nextStatus
+    // Section filter
+    const [activeSections, setActiveSections] = useState(['all']);
+
+    // Dynamic status check
+    const isSectionActive = (key) => activeSections.includes('all') || activeSections.includes(key);
+
+    // Toggle filter sections
+    const handleSectionClick = (key) => {
+      if (key === 'all') {
+        setActiveSections(['all']);
+        return;
       }
-    );
+      setActiveSections((prev) => {
+        const current = prev.filter((item) => item !== 'all');
+        if (current.includes(key)) {
+          const updated = current.filter((item) => item !== key);
+          return updated.length === 0 ? ['all'] : updated;
+        }
+        return [...current, key];
+      });
+    };
 
-    const updatedShop =
-      response.data?.data ?? response.data;
+    // Actions
+    const refreshDashboard = async () => {
+      if (!user?.id) return;
 
-    // Update shop open status
-    setShopOpenStatus(
-      updatedShop?.shopOpenStatus ??
-      updatedShop?.shop_open_status ??
-      nextStatus
-    );
-
-    // IMPORTANT:
-    // Backend automatically pauses queue when shop is closed.
-    if (nextStatus === 'close') {
-      setQueueStatus('pause');
-    }
-
-  } catch (error) {
-    console.error('Toggle Shop Error:', error);
-
-    setDashboardError(
-      error.response?.data?.message ||
-      error.message ||
-      'Failed to change shop status.'
-    );
-  } finally {
-    setShopActionLoading(false);
-  }
-};
-
-
-const toggleQueue = async () => {
-  if (!user?.id || queueActionLoading) return;
-
-  // Queue start is only allowed when shop is active + open
-  if (
-    queueStatus !== 'start' &&
-    (shopStatus !== 'active' || shopOpenStatus !== 'open')
-  ) {
-    setDashboardError(
-      'Queue can only be started when the shop is active and open.'
-    );
-
-    return;
-  }
-
-  try {
-    setQueueActionLoading(true);
-    setDashboardError('');
-
-    // Get shop ID
-    const shopResponse = await api.get(`/shops/profile/${user.id}`);
-    const shopPayload = getPayload(shopResponse);
-    const shop = shopPayload?.shop ?? shopPayload;
-
-    const shopId = shop?.id ?? shop?._id;
-
-    if (!shopId) {
-      throw new Error('Shop ID was not found.');
-    }
-
-    const nextStatus =
-      queueStatus === 'start' ? 'pause' : 'start';
-
-    const response = await api.patch(
-      `/shops/${shopId}/queue-status`,
-      {
-        queueStatus: nextStatus
+      setRefreshing(true);
+      setDashboardError('');
+      try {
+        const {
+          shopName: name,
+          liveQueue: queueData,
+          todaySummary: summaryData,
+          shopStatus: currentShopStatus,
+          shopOpenStatus: currentShopOpenStatus,
+          queueStatus: currentQueueStatus
+        } = await fetchOwnerDashboardData(user.id);
+        setShopName(name);
+        setShopStatus(currentShopStatus);
+        setShopOpenStatus(currentShopOpenStatus);
+        setQueueStatus(currentQueueStatus);
+        setLiveQueue(queueData);
+        setTodaySummary(summaryData);
+      } catch (error) {
+        setDashboardError(error.response?.data?.message || error.message || 'Unable to load dashboard data.');
+      } finally {
+        setRefreshing(false);
       }
-    );
+    };
+    const toggleShop = async () => {
+      if (!user?.id || shopActionLoading) return;
 
-    const updatedShop =
-      response.data?.data ?? response.data;
+      try {
+        setShopActionLoading(true);
+        setDashboardError('');
 
-    setQueueStatus(
-      updatedShop?.queueStatus ??
-      updatedShop?.queue_status ??
-      nextStatus
-    );
+        // Get shop ID
+        const shopResponse = await api.get(`/shops/profile/${user.id}`);
+        const shopPayload = getPayload(shopResponse);
+        const shop = shopPayload?.shop ?? shopPayload;
 
-  } catch (error) {
-    console.error('Toggle Queue Error:', error);
+        const shopId = shop?.id ?? shop?._id;
 
-    setDashboardError(
-      error.response?.data?.message ||
-      error.message ||
-      'Failed to change queue status.'
-    );
-  } finally {
-    setQueueActionLoading(false);
-  }
-};
+        if (!shopId) {
+          throw new Error('Shop ID was not found.');
+        }
 
-  const handleForceLogout = (staffId) => {
-    if (window.confirm('Are you sure you want to force logout this staff member?')) {
-      setStaffStatus((prev) =>
-        prev.map((staff) => (staff.id === staffId ? { ...staff, is_logged_in: false } : staff))
-      );
-    }
-  };
+        const nextStatus =
+          shopOpenStatus === 'open' ? 'close' : 'open';
 
-  const handleBroadcast = () => {
-    if (!message.trim()) return;
-    setSending(true);
-    setTimeout(() => {
-      setSending(false);
-      setMessage('');
-      alert('Message sent successfully!');
-    }, 500);
-  };
+        const response = await api.patch(
+          `/shops/${shopId}/shop-status`,
+          {
+            shopOpenStatus: nextStatus
+          }
+        );
 
-  const onlineStaff = staffStatus.filter((staff) => staff.is_logged_in);
+        const updatedShop =
+          response.data?.data ?? response.data;
 
-  const currentHour = new Date().getHours();
-  const greeting = currentHour < 12 ? 'Good Morning' : currentHour < 17 ? 'Good Afternoon' : 'Good Evening';
+        // Update shop open status
+        setShopOpenStatus(
+          updatedShop?.shopOpenStatus ??
+          updatedShop?.shop_open_status ??
+          nextStatus
+        );
 
-  return (
-    <div className="mx-auto w-full max-w-[1400px] p-4 md:p-6 text-slate-800 antialiased">
-      {/* PAGE HEADER */}
-      <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-        <div>
-          <div className="text-xl font-bold text-slate-700">
-            {shopName}
-          </div>
-          <div className="text-sm font-medium text-slate-500">
-            {greeting}, {user.name}
-          </div>
-          {dashboardError && (
-            <div role="alert" className="mt-1 text-xs font-medium text-red-600">
-              {dashboardError}
+        // IMPORTANT:
+        // Backend automatically pauses queue when shop is closed.
+        if (nextStatus === 'close') {
+          setQueueStatus('pause');
+        }
+
+      } catch (error) {
+        console.error('Toggle Shop Error:', error);
+
+        setDashboardError(
+          error.response?.data?.message ||
+          error.message ||
+          'Failed to change shop status.'
+        );
+      } finally {
+        setShopActionLoading(false);
+      }
+    };
+
+
+    const toggleQueue = async () => {
+      if (!user?.id || queueActionLoading) return;
+
+      // Queue start is only allowed when shop is active + open
+      if (
+        queueStatus !== 'start' &&
+        (shopStatus !== 'active' || shopOpenStatus !== 'open')
+      ) {
+        setDashboardError(
+          'Queue can only be started when the shop is active and open.'
+        );
+
+        return;
+      }
+
+      try {
+        setQueueActionLoading(true);
+        setDashboardError('');
+
+        // Get shop ID
+        const shopResponse = await api.get(`/shops/profile/${user.id}`);
+        const shopPayload = getPayload(shopResponse);
+        const shop = shopPayload?.shop ?? shopPayload;
+
+        const shopId = shop?.id ?? shop?._id;
+
+        if (!shopId) {
+          throw new Error('Shop ID was not found.');
+        }
+
+        const nextStatus =
+          queueStatus === 'start' ? 'pause' : 'start';
+
+        const response = await api.patch(
+          `/shops/${shopId}/queue-status`,
+          {
+            queueStatus: nextStatus
+          }
+        );
+
+        const updatedShop =
+          response.data?.data ?? response.data;
+
+        setQueueStatus(
+          updatedShop?.queueStatus ??
+          updatedShop?.queue_status ??
+          nextStatus
+        );
+
+      } catch (error) {
+        console.error('Toggle Queue Error:', error);
+
+        setDashboardError(
+          error.response?.data?.message ||
+          error.message ||
+          'Failed to change queue status.'
+        );
+      } finally {
+        setQueueActionLoading(false);
+      }
+    };
+
+    const handleForceLogout = (staffId) => {
+      if (window.confirm('Are you sure you want to force logout this staff member?')) {
+        setStaffStatus((prev) =>
+          prev.map((staff) => (staff.id === staffId ? { ...staff, is_logged_in: false } : staff))
+        );
+      }
+    };
+
+    const handleBroadcast = () => {
+      if (!message.trim()) return;
+      setSending(true);
+      setTimeout(() => {
+        setSending(false);
+        setMessage('');
+        alert('Message sent successfully!');
+      }, 500);
+    };
+
+    const onlineStaff = staffStatus.filter((staff) => staff.is_logged_in);
+
+    const currentHour = new Date().getHours();
+    const greeting = currentHour < 12 ? 'Good Morning' : currentHour < 17 ? 'Good Afternoon' : 'Good Evening';
+
+    return (
+      <div className="mx-auto w-full max-w-[1400px] p-4 md:p-6 text-slate-800 antialiased">
+        {/* PAGE HEADER */}
+        <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+          <div>
+            <div className="text-xl font-bold text-slate-700">
+              {shopName}
             </div>
-          )}
-          {dashboardLoading && (
-            <div className="mt-1 text-xs text-slate-400">Loading shop dashboard...</div>
-          )}
-          <div className="mt-1 flex items-center gap-3 text-xs sm:text-sm">
-            <span className={`font-semibold ${isOpen ? 'text-emerald-600' : 'text-red-600'}`}>
-              {isOpen ? '🟢 OPEN' : '🔴 CLOSED'}
-            </span>
+            <div className="text-sm font-medium text-slate-500">
+              {greeting}, {user.name}
+            </div>
+            {dashboardError && (
+              <div role="alert" className="mt-1 text-xs font-medium text-red-600">
+                {dashboardError}
+              </div>
+            )}
+            {dashboardLoading && (
+              <div className="mt-1 text-xs text-slate-400">Loading shop dashboard...</div>
+            )}
+            <div className="mt-1 flex items-center gap-3 text-xs sm:text-sm">
+              <span className={`font-semibold ${isOpen ? 'text-emerald-600' : 'text-red-600'}`}>
+                {isOpen ? '🟢 OPEN' : '🔴 CLOSED'}
+              </span>
+            </div>
           </div>
+
+
+          <button
+            onClick={refreshDashboard}
+            disabled={refreshing}
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:opacity-60"
+          >
+            {refreshing ? (
+              <>
+                <LoaderCircle className="h-4 w-4 animate-spin" />
+                Refreshing...
+              </>
+            ) : (
+              <>
+                <RefreshCw className="h-4 w-4" />
+                Refresh
+              </>
+            )}
+          </button>
+
         </div>
 
+        {/* SECTION FILTER BAR */}
+        <div className="mb-6 flex flex-wrap gap-2 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+          {[
+            {
+              key: "all",
+              label: "All",
+              icon: HomeIcon,
+            },
+            {
+              key: "controls",
+              label: "Quick Controls",
+              icon: Settings2Icon,
+            },
+            {
+              key: "live",
+              label: "Live Queue",
+              icon: RadioIcon,
+            },
+            {
+              key: "summary",
+              label: "Today's Summary",
+              icon: BarChart3Icon,
+            },
+            // {
+            //   key: "message",
+            //   label: "Send Msg to Customers",
+            //   icon: MessageSquareIcon,
+            // },
+            // {
+            //   key: "staff",
+            //   label: "Staff Status",
+            //   icon: UsersIcon,
+            // },
+          ].map(({ key, label, icon: Icon }) => {
+            const active = activeSections.includes(key);
 
-        <button
-          onClick={refreshDashboard}
-          disabled={refreshing}
-          className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:opacity-60"
-        >
-          {refreshing ? (
-            <>
-              <LoaderCircle className="h-4 w-4 animate-spin" />
-              Refreshing...
-            </>
-          ) : (
-            <>
-              <RefreshCw className="h-4 w-4" />
-              Refresh
-            </>
-          )}
-        </button>
-
-      </div>
-
-      {/* SECTION FILTER BAR */}
-      <div className="mb-6 flex flex-wrap gap-2 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
-        {[
-          {
-            key: "all",
-            label: "All",
-            icon: HomeIcon,
-          },
-          {
-            key: "controls",
-            label: "Quick Controls",
-            icon: Settings2Icon,
-          },
-          {
-            key: "live",
-            label: "Live Queue",
-            icon: RadioIcon,
-          },
-          {
-            key: "summary",
-            label: "Today's Summary",
-            icon: BarChart3Icon,
-          },
-          // {
-          //   key: "message",
-          //   label: "Send Msg to Customers",
-          //   icon: MessageSquareIcon,
-          // },
-          // {
-          //   key: "staff",
-          //   label: "Staff Status",
-          //   icon: UsersIcon,
-          // },
-        ].map(({ key, label, icon: Icon }) => {
-          const active = activeSections.includes(key);
-
-          return (
-            <button
-              key={key}
-              onClick={() => handleSectionClick(key)}
-              className={`flex items-center gap-1.5 whitespace-nowrap rounded-full px-3.5 py-1.5 text-xs font-bold transition-all sm:text-sm ${active
-                ? "bg-blue-600 text-white shadow-md shadow-blue-500/20"
-                : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
-                }`}
-            >
-              <Icon size={16} strokeWidth={2.5} />
-              <span>{label}</span>
-            </button>
-          );
-        })}
-      </div>
-
-      {/* QUICK CONTROLS */}
-      {isSectionActive('controls') && (
-        <section className="mb-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <h2 className="mb-4 text-base font-bold text-slate-900">Quick Controls</h2>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-4 transition hover:border-slate-300">
-              <div className="mb-2 flex items-center gap-2">
-                <span className="text-xl">🏪</span>
-                <span className="text-sm font-semibold text-slate-600">Shop Status</span>
-              </div>
-              <h3 className="text-xl font-extrabold text-slate-900">{isOpen ? 'OPEN' : 'CLOSED'}</h3>
-              <p className="mb-4 text-xs text-slate-500">
-                {isOpen ? 'Customers can visit your shop.' : 'Shop is closed.'}
-              </p>
+            return (
               <button
-                onClick={toggleShop}
-                className={`w-full rounded-lg px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-white transition shadow-sm ${isOpen ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-slate-600 hover:bg-slate-700'
-                  }`}
-              >
-                {isOpen ? 'Close Shop' : 'Open Shop'}
-              </button>
-            </div>
-
-            <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-4 transition hover:border-slate-300">
-              <div className="mb-2 flex items-center gap-2">
-                <span className="text-xl">📋</span>
-                <span className="text-sm font-semibold text-slate-600">Queue Status</span>
-              </div>
-              <h3 className="text-xl font-extrabold text-slate-900">{isActive ? 'ACTIVE' : 'PAUSED'}</h3>
-              <p className="mb-4 text-xs text-slate-500">
-                {isActive ? 'Customers can join queue.' : 'Queue is paused.'}
-              </p>
-              <button
-                onClick={toggleQueue}
-                className={`w-full rounded-lg px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-white transition shadow-sm ${isActive ? 'bg-blue-600 hover:bg-blue-700' : 'bg-amber-500 hover:bg-amber-600'
-                  }`}
-              >
-                {isActive ? 'Pause Queue' : 'Resume Queue'}
-              </button>
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* LIVE QUEUE */}
-      {isSectionActive('live') && (
-        <section className="mb-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <h2 className="mb-4 text-base font-bold text-slate-900">Live Queue</h2>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {[
-              { key: 'Q2', color: 'border-t-emerald-500' },
-              { key: 'Q4', color: 'border-t-blue-500' },
-              { key: 'Q6', color: 'border-t-amber-500' },
-              { key: 'Q8', color: 'border-t-purple-500' }
-            ].map(({ key, color }) => (
-              <div
                 key={key}
-                className={`relative rounded-xl border border-slate-200 border-t-4 bg-slate-50/50 p-4 text-center ${color}`}
+                onClick={() => handleSectionClick(key)}
+                className={`flex items-center gap-1.5 whitespace-nowrap rounded-full px-3.5 py-1.5 text-xs font-bold transition-all sm:text-sm ${active
+                  ? "bg-blue-600 text-white shadow-md shadow-blue-500/20"
+                  : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                  }`}
               >
-                <div className="text-xs font-bold uppercase tracking-wider text-slate-500">{key}</div>
-                <div className="my-1 text-2xl font-black text-slate-900 sm:text-3xl">
-                  {liveQueue[key].waiting}
+                <Icon size={16} strokeWidth={2.5} />
+                <span>{label}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* QUICK CONTROLS */}
+        {isSectionActive('controls') && (
+          <section className="mb-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <h2 className="mb-4 text-base font-bold text-slate-900">Quick Controls</h2>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-4 transition hover:border-slate-300">
+                <div className="mb-2 flex items-center gap-2">
+                  <span className="text-xl">🏪</span>
+                  <span className="text-sm font-semibold text-slate-600">Shop Status</span>
                 </div>
-                <div className="text-xs text-slate-400">Waiting: {liveQueue[key].waiting}</div>
+                <h3 className="text-xl font-extrabold text-slate-900">{isOpen ? 'OPEN' : 'CLOSED'}</h3>
+                <p className="mb-4 text-xs text-slate-500">
+                  {isOpen ? 'Customers can visit your shop.' : 'Shop is closed.'}
+                </p>
+                <button
+                  onClick={toggleShop}
+                  className={`w-full rounded-lg px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-white transition shadow-sm ${isOpen ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-slate-600 hover:bg-slate-700'
+                    }`}
+                >
+                  {isOpen ? 'Close Shop' : 'Open Shop'}
+                </button>
               </div>
-            ))}
-          </div>
-        </section>
-      )}
 
-      {/* TODAY'S SUMMARY */}
-      {isSectionActive('summary') && (
-        <section className="mb-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <h2 className="mb-4 text-base font-bold text-slate-900">Today's Summary</h2>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <div className="relative rounded-xl border border-slate-200 border-t-4 border-t-blue-500 bg-slate-50/50 p-4 text-center">
-              <div className="text-xs font-bold uppercase tracking-wider text-slate-500">Waiting</div>
-              <div className="my-1 text-2xl font-black text-slate-900 sm:text-3xl">{todaySummary.waiting}</div>
-              <div className="text-xs text-slate-400">Currently Waiting</div>
+              <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-4 transition hover:border-slate-300">
+                <div className="mb-2 flex items-center gap-2">
+                  <span className="text-xl">📋</span>
+                  <span className="text-sm font-semibold text-slate-600">Queue Status</span>
+                </div>
+                <h3 className="text-xl font-extrabold text-slate-900">{isActive ? 'ACTIVE' : 'PAUSED'}</h3>
+                <p className="mb-4 text-xs text-slate-500">
+                  {isActive ? 'Customers can join queue.' : 'Queue is paused.'}
+                </p>
+                <button
+                  onClick={toggleQueue}
+                  className={`w-full rounded-lg px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-white transition shadow-sm ${isActive ? 'bg-blue-600 hover:bg-blue-700' : 'bg-amber-500 hover:bg-amber-600'
+                    }`}
+                >
+                  {isActive ? 'Pause Queue' : 'Resume Queue'}
+                </button>
+              </div>
             </div>
+          </section>
+        )}
 
-            <div className="relative rounded-xl border border-slate-200 border-t-4 border-t-emerald-500 bg-slate-50/50 p-4 text-center">
-              <div className="text-xs font-bold uppercase tracking-wider text-slate-500">Arrived</div>
-              <div className="my-1 text-2xl font-black text-slate-900 sm:text-3xl">{todaySummary.arrived}</div>
-              <div className="text-xs text-slate-400">Customer Arrived</div>
+        {/* LIVE QUEUE */}
+        {isSectionActive('live') && (
+          <section className="mb-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <h2 className="mb-4 text-base font-bold text-slate-900">Live Queue</h2>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              {[
+                { key: 'Q2', color: 'border-t-emerald-500' },
+                { key: 'Q4', color: 'border-t-blue-500' },
+                { key: 'Q6', color: 'border-t-amber-500' },
+                { key: 'Q8', color: 'border-t-purple-500' }
+              ].map(({ key, color }) => (
+                <div
+                  key={key}
+                  className={`relative rounded-xl border border-slate-200 border-t-4 bg-slate-50/50 p-4 text-center ${color}`}
+                >
+                  <div className="text-xs font-bold uppercase tracking-wider text-slate-500">{key}</div>
+                  <div className="my-1 text-2xl font-black text-slate-900 sm:text-3xl">
+                    {liveQueue[key].waiting}
+                  </div>
+                  <div className="text-xs text-slate-400">Waiting: {liveQueue[key].waiting}</div>
+                </div>
+              ))}
             </div>
+          </section>
+        )}
 
-            <div className="relative rounded-xl border border-slate-200 border-t-4 border-t-amber-500 bg-slate-50/50 p-4 text-center">
-              <div className="text-xs font-bold uppercase tracking-wider text-slate-500">Not Arrived</div>
-              <div className="my-1 text-2xl font-black text-slate-900 sm:text-3xl">{todaySummary.notArrived}</div>
-              <div className="text-xs text-slate-400">Not Arrived</div>
+        {/* TODAY'S SUMMARY */}
+        {isSectionActive('summary') && (
+          <section className="mb-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <h2 className="mb-4 text-base font-bold text-slate-900">Today's Summary</h2>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <div className="relative rounded-xl border border-slate-200 border-t-4 border-t-blue-500 bg-slate-50/50 p-4 text-center">
+                <div className="text-xs font-bold uppercase tracking-wider text-slate-500">Waiting</div>
+                <div className="my-1 text-2xl font-black text-slate-900 sm:text-3xl">{todaySummary.waiting}</div>
+                <div className="text-xs text-slate-400">Currently Waiting</div>
+              </div>
+
+              <div className="relative rounded-xl border border-slate-200 border-t-4 border-t-emerald-500 bg-slate-50/50 p-4 text-center">
+                <div className="text-xs font-bold uppercase tracking-wider text-slate-500">Arrived</div>
+                <div className="my-1 text-2xl font-black text-slate-900 sm:text-3xl">{todaySummary.arrived}</div>
+                <div className="text-xs text-slate-400">Customer Arrived</div>
+              </div>
+
+              <div className="relative rounded-xl border border-slate-200 border-t-4 border-t-amber-500 bg-slate-50/50 p-4 text-center">
+                <div className="text-xs font-bold uppercase tracking-wider text-slate-500">Not Arrived</div>
+                <div className="my-1 text-2xl font-black text-slate-900 sm:text-3xl">{todaySummary.notArrived}</div>
+                <div className="text-xs text-slate-400">Not Arrived</div>
+              </div>
+
+              <div className="relative rounded-xl border border-slate-200 border-t-4 border-t-red-500 bg-slate-50/50 p-4 text-center">
+                <div className="text-xs font-bold uppercase tracking-wider text-slate-500">Cancelled</div>
+                <div className="my-1 text-2xl font-black text-slate-900 sm:text-3xl">{todaySummary.cancelled}</div>
+                <div className="text-xs text-slate-400">Cancelled Tokens</div>
+              </div>
             </div>
+          </section>
+        )}
 
-            <div className="relative rounded-xl border border-slate-200 border-t-4 border-t-red-500 bg-slate-50/50 p-4 text-center">
-              <div className="text-xs font-bold uppercase tracking-wider text-slate-500">Cancelled</div>
-              <div className="my-1 text-2xl font-black text-slate-900 sm:text-3xl">{todaySummary.cancelled}</div>
-              <div className="text-xs text-slate-400">Cancelled Tokens</div>
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* BROADCAST MESSAGE */}
-      {/* {isSectionActive('message') && (
+        {/* BROADCAST MESSAGE */}
+        {/* {isSectionActive('message') && (
         <section className="mb-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <h2 className="mb-4 text-base font-bold text-slate-900">📢 Send Message to Customers</h2>
           <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4">
@@ -730,8 +717,8 @@ const toggleQueue = async () => {
         </section>
       )} */}
 
-      {/* STAFF STATUS */}
-      {/* {isSectionActive('staff') && (
+        {/* STAFF STATUS */}
+        {/* {isSectionActive('staff') && (
         <section className="mb-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <h2 className="mb-4 text-base font-bold text-slate-900">👥 Staff Status</h2>
 
@@ -795,6 +782,6 @@ const toggleQueue = async () => {
           )}
         </section>
       )} */}
-    </div>
-  );
-}
+      </div>
+    );
+  }
