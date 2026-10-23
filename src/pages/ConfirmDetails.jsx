@@ -126,11 +126,6 @@ export default function ConfirmDetails() {
   const handleContinue = async () => {
     if (loading) return;
 
-    if (isQueuePaused) {
-      setError("Temporary misal entry is close");
-      return;
-    }
-
     setError("");
 
     const trimmedMobile = mobile.trim();
@@ -176,6 +171,14 @@ export default function ConfirmDetails() {
 
       if (!createdToken?.id) {
         throw new Error("Token was not created.");
+      }
+
+      if (
+        String(createdToken?.status || "").toLowerCase() === "qr_close" ||
+        isQueuePaused
+      ) {
+        setError("Temp shop is close");
+        return;
       }
 
       const shopData = {
@@ -256,7 +259,7 @@ export default function ConfirmDetails() {
                   {shop.shopName}
                 </div>
 
-                <div className={`mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${isQueuePaused ? 'bg-red-100 text-red-600' : 'bg-emerald-100 text-emerald-700'
+                {/* <div className={`mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${isQueuePaused ? 'bg-red-100 text-red-600' : 'bg-emerald-100 text-emerald-700'
                   }`}>
                   {isQueuePaused ? (
                     <>
@@ -267,24 +270,13 @@ export default function ConfirmDetails() {
                       <PlayCircle className="w-3.5 h-3.5" /> Live Accepting
                     </>
                   )}
-                </div>
+                </div> */}
               </div>
             </div>
           </div>
 
           {/* Conditional Rendering: Agar Queue Paused hai toh Inputs ki jagah Message dikhayein */}
-          {isQueuePaused ? (
-            <div className="my-8 py-8 px-4 bg-red-50 border-2 border-dashed border-red-300 rounded-2xl text-center">
-              <AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-3" />
-              <h3 className="text-lg font-extrabold text-red-700 mb-1">
-                Temporary misal entry is close
-              </h3>
-              <p className="text-xs sm:text-sm text-red-600 font-medium">
-                The queue is currently paused by the shop. Please check back later.
-              </p>
-            </div>
-          ) : (
-            <>
+          <>
               {/* Form Inputs */}
               <div className="space-y-4">
                 <div>
@@ -374,8 +366,7 @@ export default function ConfirmDetails() {
                   </div>
                 </div>
               )}
-            </>
-          )}
+          </>
 
           {/* Error Message */}
           {error && (
@@ -389,13 +380,13 @@ export default function ConfirmDetails() {
           <div className="mt-5">
             <button
               onClick={handleContinue}
-              disabled={loading || isQueuePaused}
-              className={`w-full h-13 rounded-2xl text-white font-bold text-base transition-all shadow-md flex items-center justify-center ${loading || isQueuePaused
+              disabled={loading}
+              className={`w-full h-13 rounded-2xl text-white font-bold text-base transition-all shadow-md flex items-center justify-center ${loading
                 ? 'bg-gray-400 cursor-not-allowed shadow-none'
                 : 'bg-gradient-to-r from-orange-500 to-orange-600 hover:opacity-95 active:scale-95'
                 }`}
             >
-              {loading ? 'Reserving Position...' : isQueuePaused ? 'TEMPORARY MISAL ENTRY IS CLOSE' : 'JOIN THE QUEUE'}
+              {loading ? 'Saving Details...' : isQueuePaused ? 'SUBMIT DETAILS' : 'JOIN THE QUEUE'}
             </button>
 
             {/* Rules Block */}

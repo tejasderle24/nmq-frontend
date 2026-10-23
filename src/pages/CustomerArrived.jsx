@@ -189,7 +189,7 @@ export default function CustomerArrived() {
                 </span>
               </div>
 
-              <div className="grid grid-cols-3 py-5 px-3 text-center">
+              <div className="grid grid-cols-2 py-5 px-3 text-center">
                 <div className="relative px-2 border-r border-[#DCEFD6]">
                   <div className="w-9 h-9 rounded-full bg-white flex items-center justify-center mx-auto mb-2.5 shadow-sm">
                     <Clock className="w-4 h-4 text-emerald-600" />
@@ -209,16 +209,6 @@ export default function CustomerArrived() {
                   <div className="text-xs text-[#557C4E]">Arrived At</div>
                   <div className="text-base font-extrabold text-gray-800 mt-0.5">
                     {visitSummary.arrivalTime}
-                  </div>
-                </div>
-
-                <div className="px-2">
-                  <div className="w-9 h-9 rounded-full bg-white flex items-center justify-center mx-auto mb-2.5 shadow-sm">
-                    <Users className="w-4 h-4 text-emerald-600" />
-                  </div>
-                  <div className="text-xs text-[#557C4E]">Queue Ahead</div>
-                  <div className="text-base font-extrabold text-gray-800 mt-0.5">
-                    {visitSummary.peopleAhead}
                   </div>
                 </div>
               </div>

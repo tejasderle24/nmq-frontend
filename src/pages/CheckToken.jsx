@@ -64,7 +64,7 @@ export default function CheckToken() {
         })
       } else if (token.status === 'not_arrived') {
         setInfoMessage(
-          '⚠️ You have not arrived at the shop yet. Please reach the shop as soon as possible.'
+          "⚠️ You haven't arrived at the shop yet. Please wait for the current token to expire, then create a new token."
         )
       } else if (token.status === 'cancel') {
         setInfoMessage(
@@ -72,11 +72,7 @@ export default function CheckToken() {
         )
       } else if (token.status === 'arrived') {
         setInfoMessage(
-          '✅ You have arrived at the shop.'
-        )
-      } else if (token.status === 'serving') {
-        setInfoMessage(
-          '🍽️ Your turn is in progress. Please enjoy your meal!'
+          '✅ You have already received your table. Please enjoy your meal!'
         )
       } else if (token.status === 'completed') {
         setInfoMessage(
