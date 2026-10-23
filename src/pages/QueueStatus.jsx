@@ -146,23 +146,23 @@ export default function QueueStatus() {
       return payload?.token ?? payload
     }
 
-    const handleTokenCalled = (eventData) => {
-      const calledToken = getPayloadToken(eventData)
-      const calledId = calledToken?.id ?? calledToken?._id ?? calledToken?.tokenId ?? calledToken?.token_id
+    // const handleTokenCalled = (eventData) => {
+    //   const calledToken = getPayloadToken(eventData)
+    //   const calledId = calledToken?.id ?? calledToken?._id ?? calledToken?.tokenId ?? calledToken?.token_id
 
-      if (calledId == null || String(calledId) !== String(tokenId)) return
+    //   if (calledId == null || String(calledId) !== String(tokenId)) return
 
-      setActiveToken(calledToken)
-      navigate('/final-call', {
-        replace: true,
-        state: {
-          token: calledToken,
-          tokenId,
-          mobile: state?.mobile ?? calledToken?.mobile ?? localStorage.getItem('currentMobile'),
-          shop: state?.shop ?? calledToken?.shop ?? activeTokenRef.current?.shop ?? shop,
-        },
-      })
-    }
+    //   setActiveToken(calledToken)
+    //   navigate('/final-call', {
+    //     replace: true,
+    //     state: {
+    //       token: calledToken,
+    //       tokenId,
+    //       mobile: state?.mobile ?? calledToken?.mobile ?? localStorage.getItem('currentMobile'),
+    //       shop: state?.shop ?? calledToken?.shop ?? activeTokenRef.current?.shop ?? shop,
+    //     },
+    //   })
+    // }
 
     const handleTokenCancelled = (eventData) => {
       const cancelledToken = getPayloadToken(eventData)
@@ -172,11 +172,11 @@ export default function QueueStatus() {
       setActiveToken((prev) => prev ? { ...prev, ...cancelledToken, status: 'cancel' } : cancelledToken)
     }
 
-    socket.on('token_called', handleTokenCalled)
+    // socket.on('token_called', handleTokenCalled)
     socket.on('token_cancelled', handleTokenCancelled)
 
     return () => {
-      socket.off('token_called', handleTokenCalled)
+      // socket.off('token_called', handleTokenCalled)
       socket.off('token_cancelled', handleTokenCancelled)
     }
   }, [tokenId, navigate, state, shop])

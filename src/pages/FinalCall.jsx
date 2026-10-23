@@ -94,6 +94,8 @@ export default function FinalCall() {
       const updatedToken = getToken(eventData)
       if (!matchesActiveToken(updatedToken)) return
 
+      console.log("updatedToken",updatedToken)
+
       setLiveToken(updatedToken)
       stopBell()
 

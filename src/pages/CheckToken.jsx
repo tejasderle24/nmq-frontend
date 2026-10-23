@@ -47,9 +47,9 @@ export default function CheckToken() {
       const token = data.tokens[0]
 
       // LocalStorage mein token data save karna
-      localStorage.setItem("currentTokenId", token.id)
-      localStorage.setItem("currentMobile", token.mobile)
-      localStorage.setItem("currentShop", JSON.stringify({ shopId: token.shopId, shopName: token.shopName || "Queue Shop" }))
+      // localStorage.setItem("currentTokenId", token.id)
+      // localStorage.setItem("currentMobile", token.mobile)
+      // localStorage.setItem("currentShop", JSON.stringify({ shopId: token.shopId, shopName: token.shopName || "Queue Shop" }))
 
       // Handle token status
       if (token.status === 'waiting') {

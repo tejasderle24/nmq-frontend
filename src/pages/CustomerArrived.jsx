@@ -11,6 +11,8 @@ import {
   Megaphone,
 } from 'lucide-react'
 import AdvertisementCarousel from '../components/AdvertisementCarousel'
+import { useTokenStore } from "../store/token.store";
+
 
 const API_BASE_URL = import.meta.env.VITE_API_URL
 
@@ -38,6 +40,8 @@ export default function CustomerArrived() {
   const location = useLocation()
   const activeToken = location.state?.token || null
 
+  console.log(activeToken, "activeToken")
+
   const [rating, setRating] = useState(0)
   const [likedOptions, setLikedOptions] = useState([])
   const [feedback, setFeedback] = useState('')
@@ -50,11 +54,23 @@ export default function CustomerArrived() {
 
   if (!activeToken) return null
 
+  const waitingTimeSeconds = Number(activeToken?.waitingTimeSeconds) || 0;
+
+  const formatWaitingTime = (seconds) => {
+    if (seconds < 60) {
+      return `${seconds} sec`;
+    }
+
+    return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")} min`;
+  };
+
   const visitSummary = {
-    totalWait: '-',
-    arrivalTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    peopleAhead: '0',
-  }
+    totalWait: formatWaitingTime(waitingTimeSeconds),
+    arrivalTime: new Date().toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    }),
+  };
 
   // Token number display string
   const tokenDisplay = activeToken
@@ -75,48 +91,68 @@ export default function CustomerArrived() {
 
   // Handle feedback form submission with backend API integration
   const handleSubmitFeedback = async () => {
-    if (submitted || submitting) return
+    if (submitted || submitting) return;
 
-    if (rating === 0 && likedOptions.length === 0 && feedback.trim() === '') {
-      alert('Please share at least one feedback before submitting.')
-      return
+    if (
+      rating === 0 &&
+      likedOptions.length === 0 &&
+      feedback.trim() === ""
+    ) {
+      alert("Please share at least one feedback before submitting.");
+      return;
     }
 
-    setSubmitting(true)
+    if (!activeToken) {
+      alert("Token details not found. Please try again.");
+      return;
+    }
+
+    setSubmitting(true);
 
     try {
       const payload = {
         shopId: activeToken.shopId || activeToken.shop_id,
-        tokenId: activeToken.id,
-        customerName: activeToken.name || activeToken.customer_name || 'Guest',
-        mobile: activeToken.mobile || activeToken.phone || '',
+        tokenId: activeToken.id || activeToken._id,
+        customerName:
+          activeToken.name || activeToken.customer_name || "Guest",
+        mobile: activeToken.mobile || activeToken.phone || "",
         rating: rating > 0 ? rating : null,
         likedOptions,
         feedbackText: feedback.trim() || null,
-      }
+      };
 
       const response = await fetch(`${API_BASE_URL}/feedback`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify(payload),
-      })
+      });
 
-      const result = await response.json()
+      const result = await response.json();
 
       if (!response.ok || !result.success) {
-        throw new Error(result.message || 'Failed to submit feedback')
+        throw new Error(result.message || "Failed to submit feedback");
       }
 
-      setSubmitted(true)
+      setSubmitted(true);
+
+      // Clear Zustand token state after successful submission
+      useTokenStore.getState().clearCurrentToken();
+      // Explicitly remove persisted storage
+      localStorage.removeItem("current-token-storage");
+
+      // Only if these keys were separately saved in localStorage:
+      localStorage.removeItem("currentTokenId");
+      localStorage.removeItem("currentMobile");
+      localStorage.removeItem("currentShop");
     } catch (error) {
-      console.error('Feedback submission error:', error)
-      alert(error.message || 'Could not submit feedback. Please try again.')
+      console.error("Feedback submission error:", error);
+      alert(error.message || "Could not submit feedback. Please try again.");
     } finally {
-      setSubmitting(false)
+      setSubmitting(false);
     }
-  }
+  };
 
   const getCharCountColor = () => {
     if (feedback.length > 260) return 'text-red-600'
@@ -196,9 +232,7 @@ export default function CustomerArrived() {
                   </div>
                   <div className="text-xs text-[#557C4E]">Total Wait</div>
                   <div className="text-base font-extrabold text-gray-800 mt-0.5">
-                    {visitSummary.totalWait === '-'
-                      ? '-'
-                      : `${visitSummary.totalWait} mins`}
+                    {visitSummary.totalWait}
                   </div>
                 </div>
 
@@ -239,8 +273,8 @@ export default function CustomerArrived() {
                   >
                     <Star
                       className={`w-9 h-9 ${rating >= star
-                          ? 'fill-amber-400 text-amber-300'
-                          : 'fill-transparent text-amber-300'
+                        ? 'fill-amber-400 text-amber-300'
+                        : 'fill-transparent text-amber-300'
                         }`}
                     />
                   </button>
@@ -269,8 +303,8 @@ export default function CustomerArrived() {
                       key={option}
                       onClick={() => toggleOption(option)}
                       className={`px-3.5 py-2.5 rounded-full text-xs font-semibold border transition-all duration-200 ${selected
-                          ? 'bg-gradient-to-r from-emerald-600 to-emerald-500 text-white border-emerald-600 shadow-md shadow-emerald-600/20'
-                          : 'bg-gray-50 text-gray-600 border-gray-200 hover:-translate-y-0.5 shadow-none'
+                        ? 'bg-gradient-to-r from-emerald-600 to-emerald-500 text-white border-emerald-600 shadow-md shadow-emerald-600/20'
+                        : 'bg-gray-50 text-gray-600 border-gray-200 hover:-translate-y-0.5 shadow-none'
                         }`}
                     >
                       {option}
@@ -324,8 +358,8 @@ export default function CustomerArrived() {
               onClick={handleSubmitFeedback}
               disabled={submitting}
               className={`w-full mt-5 h-14 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-500 text-white font-bold text-base shadow-lg shadow-emerald-600/25 transition-all ${submitting
-                  ? 'opacity-75 cursor-not-allowed'
-                  : 'hover:-translate-y-0.5 active:scale-95 cursor-pointer'
+                ? 'opacity-75 cursor-not-allowed'
+                : 'hover:-translate-y-0.5 active:scale-95 cursor-pointer'
                 }`}
             >
               {submitting ? 'Submitting...' : 'Submit Feedback'}
