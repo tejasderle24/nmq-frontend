@@ -20,12 +20,12 @@ const toApiPayload = (advertisement) => {
   payload.append('eventTitle', advertisement.event_title.trim());
   payload.append('redirectUrl', advertisement.redirect_url || '');
   payload.append('ctaText', advertisement.cta_text || '');
-  payload.append('shopId', advertisement.shop_id || '');
-  payload.append('placement', advertisement.placement);
+  payload.append('shopId', JSON.stringify(Array.isArray(advertisement.shop_id) ? advertisement.shop_id : (advertisement.shop_id ? [advertisement.shop_id] : [])));
+  payload.append('placement', JSON.stringify(Array.isArray(advertisement.placement) ? advertisement.placement : (advertisement.placement ? [advertisement.placement] : [])));
   payload.append('displayOrder', String(Number(advertisement.display_order) || 1));
   payload.append('startDate', advertisement.start_date || '');
   payload.append('endDate', advertisement.end_date || '');
-  payload.append('isActive', String(Boolean(advertisement.is_active)));
+  payload.append('isActive', String(advertisement.is_active !== false));
 
   if (advertisement.image_file) {
     payload.append('image', advertisement.image_file);
@@ -36,15 +36,41 @@ const toApiPayload = (advertisement) => {
   return payload;
 };
 
-export const getAdvertisementsApi = async (params) => {
-  const response = await api.get('/advertisements', { params });
+export const getAdvertisementsApi = async (params = {}) => {
+  // Normalize shopId to shop_id for backend compatibility
+  const queryParams = {
+    ...params,
+    ...(params.shopId != null ? { shop_id: params.shopId } : {}),
+  };
+
+  const response = await api.get('/advertisements', { params: queryParams });
   const payload = getPayload(response);
-  const advertisements = Array.isArray(payload) ? payload : payload?.advertisements ?? [];
+  
+  // Correctly extract from payload.data or fallback to array/advertisements
+  const advertisements = Array.isArray(payload) 
+    ? payload 
+    : payload?.data ?? payload?.advertisements ?? [];
 
   return {
-    advertisements: advertisements.map(toAdvertisement),
+    advertisements: advertisements.map((ad) => 
+      typeof toAdvertisement === 'function' ? toAdvertisement(ad) : ad
+    ),
     pagination: response.data?.pagination ?? payload?.pagination ?? null
   };
+};
+
+
+
+export const getLiveAdvertisementsApi = async (params = {}) => {
+  const queryParams = {
+    ...params,
+    ...(params.shopId != null ? { shop_id: params.shopId } : {}),
+  };
+  delete queryParams.shopId;
+  const response = await api.get('/advertisements/public/live', { params: queryParams });
+  const payload = getPayload(response);
+  const advertisements = Array.isArray(payload) ? payload : payload?.advertisements ?? [];
+  return advertisements.map(toAdvertisement);
 };
 
 export const getAdvertisementStatisticsApi = async () => {
@@ -94,7 +120,7 @@ export const recordAdvertisementClickApi = async (adId, payload) => {
     `/advertisements/${adId}/click`,
     {
       adId,
-      ...payload,
+      ...(payload || {}),
     }
   );
 

@@ -1,7 +1,200 @@
+// import { useEffect, useRef, useState } from "react";
+// import { ChevronLeft, ChevronRight } from "lucide-react";
+// import { AdvertisementCard } from "./AdvertisementCard";
+// import { getAdvertisementsApi } from "../api/advertisements.api";
+// import { useTokenStore } from "../store/token.store";
+
+// export default function AdvertisementCarousel({
+//   ads,
+//   shopId: shopIdProp,
+//   placement = "shop_list",
+//   autoSlide = true,
+//   slideInterval = 5000,
+//   onAdClick,
+//   customer: customerProp,
+// }) {
+//   const currentTokenId = useTokenStore((state) => state.currentTokenId);
+//   const currentMobile = useTokenStore((state) => state.currentMobile);
+//   const currentShop = useTokenStore((state) => state.currentShop);
+//   const currentCustomerName = useTokenStore((state) => state.currentCustomerName);
+
+//   const shopId = shopIdProp ?? currentShop?.shopId ?? currentShop?.id ?? null;
+
+//   const customer = customerProp ?? {
+//     id: currentTokenId ?? null,
+//     name: currentCustomerName ?? null,
+//     mobile: currentMobile ?? null,
+//   };
+
+//   const [fetchedAds, setFetchedAds] = useState([]);
+//   const [loading, setLoading] = useState(!ads);
+//   const [current, setCurrent] = useState(0);
+//   const [paused, setPaused] = useState(false);
+
+//   const touchStartX = useRef(0);
+//   const touchEndX = useRef(0);
+
+//   // Fetch Advertisements if not passed via props
+//   useEffect(() => {
+//     if (ads !== undefined && ads !== null) {
+//       setLoading(false);
+//       return;
+//     }
+
+//     let mounted = true;
+
+//     const fetchAdvertisements = async () => {
+//       setLoading(true);
+
+//       try {
+//         const result = await getAdvertisementsApi({
+//           placement,
+//           ...(shopId != null ? { shopId } : {}),
+//         });
+
+//         if (mounted) {
+//           const validAds = (result?.advertisements ?? []).filter(
+//             (ad) => (ad.is_active ?? ad.isActive) !== false
+//           );
+//           setFetchedAds(validAds);
+//         }
+//       } catch (error) {
+//         if (mounted) setFetchedAds([]);
+//         console.error("Failed to load advertisements:", error);
+//       } finally {
+//         if (mounted) setLoading(false);
+//       }
+//     };
+
+//     fetchAdvertisements();
+
+//     return () => {
+//       mounted = false;
+//     };
+//   }, [ads, placement, shopId]);
+
+//   const activeAds = ads ?? fetchedAds;
+
+//   // Next / Previous controls
+//   const nextSlide = () => {
+//     if (activeAds.length === 0) return;
+//     setCurrent((prev) => (prev + 1) % activeAds.length);
+//   };
+
+//   const prevSlide = () => {
+//     if (activeAds.length === 0) return;
+//     setCurrent((prev) => (prev - 1 + activeAds.length) % activeAds.length);
+//   };
+
+//   // Auto slide timer
+//   useEffect(() => {
+//     if (!autoSlide || paused || activeAds.length <= 1) return;
+
+//     const interval = setInterval(() => {
+//       nextSlide();
+//     }, slideInterval);
+
+//     return () => clearInterval(interval);
+//   }, [autoSlide, paused, activeAds.length, slideInterval]);
+
+//   // Touch handlers for mobile swipe
+//   const handleTouchStart = (e) => {
+//     touchStartX.current = e.targetTouches[0].clientX;
+//   };
+
+//   const handleTouchMove = (e) => {
+//     touchEndX.current = e.targetTouches[0].clientX;
+//   };
+
+//   const handleTouchEnd = () => {
+//     if (!touchStartX.current || !touchEndX.current) return;
+//     const distance = touchStartX.current - touchEndX.current;
+//     if (distance > 50) {
+//       nextSlide(); // Swiped left
+//     } else if (distance < -50) {
+//       prevSlide(); // Swiped right
+//     }
+//     touchStartX.current = 0;
+//     touchEndX.current = 0;
+//   };
+
+//   if (loading) {
+//     return (
+//       <div className="w-full aspect-[8/3] bg-gray-200 animate-pulse rounded-2xl" />
+//     );
+//   }
+
+//   if (!activeAds || activeAds.length === 0) {
+//     return null;
+//   }
+
+//   return (
+//     <div
+//       className="relative w-full overflow-hidden group"
+//       onMouseEnter={() => setPaused(true)}
+//       onMouseLeave={() => setPaused(false)}
+//       onTouchStart={handleTouchStart}
+//       onTouchMove={handleTouchMove}
+//       onTouchEnd={handleTouchEnd}
+//     >
+//       {/* Slider Container */}
+//       <div
+//         className="flex transition-transform duration-500 ease-out"
+//         style={{ transform: `translateX(-${current * 100}%)` }}
+//       >
+//         {activeAds.map((ad, idx) => (
+//           <div key={ad._id || ad.id || idx} className="w-full flex-shrink-0">
+//             <AdvertisementCard
+//               advertisement={ad}
+//               onClick={onAdClick}
+//               shopId={shopId}
+//               placement={placement}
+//               customer={customer}
+//             />
+//           </div>
+//         ))}
+//       </div>
+
+//       {/* Left / Right Buttons (Visible if more than 1 ad exists) */}
+//       {activeAds.length > 1 && (
+//         <>
+//           <button
+//             onClick={prevSlide}
+//             className="absolute left-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/40 text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/60"
+//             aria-label="Previous Slide"
+//           >
+//             <ChevronLeft className="w-5 h-5" />
+//           </button>
+//           <button
+//             onClick={nextSlide}
+//             className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/40 text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/60"
+//             aria-label="Next Slide"
+//           >
+//             <ChevronRight className="w-5 h-5" />
+//           </button>
+
+//           {/* Dots Indicator */}
+//           <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5">
+//             {activeAds.map((_, idx) => (
+//               <button
+//                 key={idx}
+//                 onClick={() => setCurrent(idx)}
+//                 className={`w-2 h-2 rounded-full transition-all ${
+//                   current === idx ? "bg-white w-4" : "bg-white/50"
+//                 }`}
+//               />
+//             ))}
+//           </div>
+//         </>
+//       )}
+//     </div>
+//   );
+// }
+
 import { useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { AdvertisementCard } from "./AdvertisementCard";
-import { getAdvertisementsApi } from "../api/advertisements.api";
+import { getLiveAdvertisementsApi } from "../api/advertisements.api";
 import { useTokenStore } from "../store/token.store";
 
 export default function AdvertisementCarousel({
@@ -13,25 +206,12 @@ export default function AdvertisementCarousel({
   onAdClick,
   customer: customerProp,
 }) {
-  // Read current customer and shop details from Zustand
-  const currentTokenId = useTokenStore(
-    (state) => state.currentTokenId
-  );
+  const currentTokenId = useTokenStore((state) => state.currentTokenId);
+  const currentMobile = useTokenStore((state) => state.currentMobile);
+  const currentShop = useTokenStore((state) => state.currentShop);
+  const currentCustomerName = useTokenStore((state) => state.currentCustomerName);
 
-  const currentMobile = useTokenStore(
-    (state) => state.currentMobile
-  );
-
-  const currentShop = useTokenStore(
-    (state) => state.currentShop
-  );
-
-  const currentCustomerName = useTokenStore(
-    (state) => state.currentCustomerName
-  );
-
-  // Explicitly passed props take priority over store values
-  const shopId = shopIdProp ?? currentShop?.shopId ?? null;
+  const shopId = shopIdProp ?? currentShop?.shopId ?? currentShop?.id ?? null;
 
   const customer = customerProp ?? {
     id: currentTokenId ?? null,
@@ -42,12 +222,12 @@ export default function AdvertisementCarousel({
   const [fetchedAds, setFetchedAds] = useState([]);
   const [loading, setLoading] = useState(!ads);
   const [current, setCurrent] = useState(0);
-  const [visible, setVisible] = useState(true);
   const [paused, setPaused] = useState(false);
 
   const touchStartX = useRef(0);
   const touchEndX = useRef(0);
 
+  // Fetch Advertisements if not passed via props
   useEffect(() => {
     if (ads !== undefined && ads !== null) {
       setLoading(false);
@@ -60,25 +240,15 @@ export default function AdvertisementCarousel({
       setLoading(true);
 
       try {
-        const result = await getAdvertisementsApi({
+        const liveAds = await getLiveAdvertisementsApi({
           placement,
           ...(shopId != null ? { shopId } : {}),
         });
 
-        if (mounted) {
-          setFetchedAds(
-            (result?.advertisements ?? []).filter(
-              (ad) => ad.is_active ?? ad.isActive
-            )
-          );
-        }
+        if (mounted) setFetchedAds(Array.isArray(liveAds) ? liveAds : []);
       } catch (error) {
         if (mounted) setFetchedAds([]);
-
-        console.error(
-          "Failed to load advertisements:",
-          error
-        );
+        console.error("Failed to load advertisements:", error);
       } finally {
         if (mounted) setLoading(false);
       }
@@ -94,165 +264,116 @@ export default function AdvertisementCarousel({
   const activeAds = ads ?? fetchedAds;
 
   useEffect(() => {
-    setCurrent((index) =>
-      Math.min(index, Math.max(activeAds.length - 1, 0))
-    );
+    setCurrent((index) => Math.min(index, Math.max(activeAds.length - 1, 0)));
   }, [activeAds.length]);
 
+  // Next / Previous controls
   const nextSlide = () => {
-    if (activeAds.length <= 1) return;
-
-    setVisible(false);
-
-    setTimeout(() => {
-      setCurrent((prev) =>
-        prev === activeAds.length - 1 ? 0 : prev + 1
-      );
-      setVisible(true);
-    }, 180);
+    if (activeAds.length === 0) return;
+    setCurrent((prev) => (prev + 1) % activeAds.length);
   };
 
-  const previousSlide = () => {
-    if (activeAds.length <= 1) return;
-
-    setVisible(false);
-
-    setTimeout(() => {
-      setCurrent((prev) =>
-        prev === 0 ? activeAds.length - 1 : prev - 1
-      );
-      setVisible(true);
-    }, 180);
+  const prevSlide = () => {
+    if (activeAds.length === 0) return;
+    setCurrent((prev) => (prev - 1 + activeAds.length) % activeAds.length);
   };
 
-  // Auto rotation
+  // Auto slide timer
   useEffect(() => {
-    if (
-      loading ||
-      !autoSlide ||
-      paused ||
-      activeAds.length <= 1
-    ) {
-      return;
-    }
+    if (!autoSlide || paused || activeAds.length <= 1) return;
 
-    const timer = setInterval(() => {
-      setCurrent((prev) =>
-        prev === activeAds.length - 1 ? 0 : prev + 1
-      );
+    const interval = setInterval(() => {
+      nextSlide();
     }, slideInterval);
 
-    return () => clearInterval(timer);
-  }, [
-    loading,
-    activeAds.length,
-    autoSlide,
-    slideInterval,
-    paused,
-  ]);
+    return () => clearInterval(interval);
+  }, [autoSlide, paused, activeAds.length, slideInterval]);
 
-  const handleTouchStart = (event) => {
-    setPaused(true);
-    touchStartX.current = event.changedTouches[0].clientX;
+  // Touch handlers for mobile swipe
+  const handleTouchStart = (e) => {
+    touchStartX.current = e.targetTouches[0].clientX;
   };
 
-  const handleTouchEnd = (event) => {
-    touchEndX.current = event.changedTouches[0].clientX;
+  const handleTouchMove = (e) => {
+    touchEndX.current = e.targetTouches[0].clientX;
+  };
 
-    const distance =
-      touchStartX.current - touchEndX.current;
-
-    if (Math.abs(distance) > 50) {
-      if (distance > 0) {
-        nextSlide();
-      } else {
-        previousSlide();
-      }
+  const handleTouchEnd = () => {
+    if (!touchStartX.current || !touchEndX.current) return;
+    const distance = touchStartX.current - touchEndX.current;
+    if (distance > 50) {
+      nextSlide(); // Swiped left
+    } else if (distance < -50) {
+      prevSlide(); // Swiped right
     }
-
-    setPaused(false);
+    touchStartX.current = 0;
+    touchEndX.current = 0;
   };
 
-  const handleAdvertisementClick = (ad) => {
-    onAdClick?.(ad);
-  };
-
-  if (loading && activeAds.length === 0) {
-    return null;
+  if (loading) {
+    return (
+      <div className="w-full aspect-[8/3] bg-gray-200 animate-pulse rounded-2xl" />
+    );
   }
 
-  if (activeAds.length === 0) {
+  if (!activeAds || activeAds.length === 0) {
     return null;
   }
 
   return (
     <div
-      onTouchStart={handleTouchStart}
-      onTouchEnd={handleTouchEnd}
+      className="relative w-full overflow-hidden group"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
-      className="relative w-full my-3 sm:my-4 md:my-6 group"
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
     >
+      {/* Slider Container */}
       <div
-        className={`transition-all duration-300 ease-out ${
-          visible
-            ? "opacity-100 translate-y-0 scale-100"
-            : "opacity-0 translate-y-1.5 scale-[0.985]"
-        }`}
+        className="flex transition-transform duration-500 ease-out"
+        style={{ transform: `translateX(-${current * 100}%)` }}
       >
-        <AdvertisementCard
-          key={
-            activeAds[current]?._id ??
-            activeAds[current]?.id
-          }
-          advertisement={activeAds[current]}
-          onClick={handleAdvertisementClick}
-          shopId={shopId}
-          placement={placement}
-          customer={customer}
-        />
+        {activeAds.map((ad, idx) => (
+          <div key={ad._id || ad.id || idx} className="w-full flex-shrink-0">
+            <AdvertisementCard
+              advertisement={ad}
+              onClick={onAdClick}
+              shopId={shopId}
+              placement={placement}
+              customer={customer}
+              isVisible={idx === current}
+            />
+          </div>
+        ))}
       </div>
 
+      {/* Left / Right Buttons (Visible if more than 1 ad exists) */}
       {activeAds.length > 1 && (
         <>
           <button
-            type="button"
-            onClick={previousSlide}
-            aria-label="Previous slide"
-            className="hidden sm:flex absolute left-2 top-1/2 -translate-y-1/2 z-10 w-8 h-8 md:w-10 md:h-10 items-center justify-center rounded-full bg-white/80 hover:bg-white text-gray-800 shadow-md backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-all duration-200"
+            onClick={prevSlide}
+            className="absolute left-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/40 text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/60"
+            aria-label="Previous Slide"
           >
-            <ChevronLeft className="w-5 h-5 md:w-6 md:h-6" />
+            <ChevronLeft className="w-5 h-5" />
           </button>
-
           <button
-            type="button"
             onClick={nextSlide}
-            aria-label="Next slide"
-            className="hidden sm:flex absolute right-2 top-1/2 -translate-y-1/2 z-10 w-8 h-8 md:w-10 md:h-10 items-center justify-center rounded-full bg-white/80 hover:bg-white text-gray-800 shadow-md backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-all duration-200"
+            className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/40 text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/60"
+            aria-label="Next Slide"
           >
-            <ChevronRight className="w-5 h-5 md:w-6 md:h-6" />
+            <ChevronRight className="w-5 h-5" />
           </button>
 
-          <div className="flex justify-center items-center gap-1.5 sm:gap-2 mt-3 sm:mt-4">
-            {activeAds.map((ad, index) => (
+          {/* Dots Indicator */}
+          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5">
+            {activeAds.map((_, idx) => (
               <button
-                type="button"
-                key={ad._id ?? ad.id ?? index}
-                aria-label={`Show advertisement ${index + 1}`}
-                onClick={() => {
-                  if (index === current) return;
-
-                  setVisible(false);
-
-                  setTimeout(() => {
-                    setCurrent(index);
-                    setVisible(true);
-                  }, 180);
-                }}
-                className={`h-1.5 sm:h-2 rounded-full transition-all duration-300 ease-out ${
-                  index === current
-                    ? "w-6 sm:w-8 bg-[#FC8019]"
-                    : "w-1.5 sm:w-2 bg-gray-200 hover:bg-gray-300"
+                key={idx}
+                onClick={() => setCurrent(idx)}
+                className={`w-2 h-2 rounded-full transition-all ${
+                  current === idx ? "bg-white w-4" : "bg-white/50"
                 }`}
               />
             ))}

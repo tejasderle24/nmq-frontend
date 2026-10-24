@@ -52,10 +52,11 @@
 //   }, [pendingArrivals, timerNow]);
 
 //   const addCallTimer = (token) => {
-//     const parsedCalledAt = Date.parse(token?.calledAt || token?.called_at || "");
 //     return {
 //       ...token,
-//       _callStartedAt: Number(token?._callStartedAt) || (Number.isFinite(parsedCalledAt) ? parsedCalledAt : Date.now()),
+//       // Start the countdown immediately when the frontend receives the call event.
+//       // Do not wait for calledAt from the API/server, which can arrive late or be inconsistent.
+//       _callStartedAt: Number(token?._callStartedAt) || Date.now(),
 //     };
 //   };
 
@@ -123,7 +124,15 @@
 //         });
 //         const data = await res.json();
 //         if (data.success && data.tokens) {
-//           setWaitingTokens(data.tokens);
+//           const tokens = data.tokens;
+//           const waiting = tokens.filter((item) => String(item.status || "waiting").toLowerCase() === "waiting");
+//           const active = tokens
+//             .filter((item) => ["called", "imhere", "im-here"].includes(String(item.status || "").toLowerCase()))
+//             .map((item) => String(item.status || "").toLowerCase() === "called" ? addCallTimer(item) : item);
+
+//           setWaitingTokens(waiting);
+//           setPendingArrivals(active);
+//           setTimerNow(Date.now());
 //         }
 //       } catch (err) {
 //         console.error("Failed to load initial waiting tokens:", err);
@@ -442,11 +451,14 @@
 //                             return qType === q.key;
 //                           })
 //                           .map((token) => {
-//                             const isImHere = token.status === "imhere" || token.status === "im-here";
+//                             const status = String(token.status || "").toLowerCase();
+//                             const isImHere = status === "imhere" || status === "im-here";
+//                             const isCalled = status === "called";
+//                             const customerConfirmed = token.customerConfirm === true || token.customer_confirm === true;
 //                             const callStartedAt = Number(token._callStartedAt) || Date.parse(token.calledAt || token.called_at || "");
 //                             const elapsedSeconds = callStartedAt ? Math.max(0, Math.floor((timerNow - callStartedAt) / 1000)) : 0;
 //                             const remainingSeconds = Math.max(0, CALL_TIMEOUT_SECONDS - elapsedSeconds);
-//                             const timerExpired = !isImHere && token.status === "called" && remainingSeconds <= 0;
+//                             const timerExpired = isCalled && remainingSeconds <= 0;
 //                             const canFinalize = isImHere || timerExpired;
 //                             return (
 //                               <div
@@ -459,7 +471,7 @@
 //                                   <div className="grid grid-cols-3 gap-2 text-xs flex-1">
 //                                     <div>
 //                                       <span className="block text-[10px] font-bold text-slate-400">TOKEN</span>
-//                                       <strong className="text-base text-blue-600">{token.token_no || token.tokenNo}</strong>
+//                                       <strong className={`${isCalled ? "text-2xl" : "text-base"} font-black text-blue-600`}>{token.token_no || token.tokenNo}</strong>
 //                                     </div>
 //                                     <div>
 //                                       <span className="block text-[10px] font-bold text-slate-400">CUSTOMER</span>
@@ -473,7 +485,13 @@
 //                                 </div>
 
 //                                 {canFinalize ? (
-//                                   <div className="flex items-center gap-2 pt-2 border-t border-slate-200">
+//                                   <>
+//                                     <p className={`text-center text-sm font-extrabold ${isImHere && customerConfirmed ? "text-emerald-700" : "text-red-600"}`}>
+//                                       {isImHere
+//                                         ? (customerConfirmed ? "Customer Confirmed the Token" : "Customer is here")
+//                                         : "Customer Not Confirmed the Token"}
+//                                     </p>
+//                                     <div className="flex items-center gap-2 pt-2 border-t border-slate-200">
 //                                     <button
 //                                       onClick={() => updateArrivalStatus(token.id, "arrived")}
 //                                       className="flex-1 h-9 border border-emerald-400 bg-emerald-600 text-white hover:bg-emerald-700 active:scale-95 rounded-md text-xs font-bold transition-all shadow-xs"
@@ -487,12 +505,18 @@
 //                                     >
 //                                       NOT ARRIVED ❌
 //                                     </button>
-//                                   </div>
+//                                     </div>
+//                                   </>
 //                                 ) : (
 //                                   <div className="pt-2 border-t border-slate-200 text-center">
-//                                     <span className="text-[11px] font-semibold text-amber-700">
-//                                       ⏳ No response yet — staff actions in {Math.floor(remainingSeconds / 60)}:{String(remainingSeconds % 60).padStart(2, "0")}
-//                                     </span>
+//                                     {isCalled ? (
+//                                       <div className="flex flex-col items-center gap-1">
+//                                         <span className="text-lg font-extrabold tabular-nums text-amber-800">
+//                                           {Math.floor(remainingSeconds / 60)}:{String(remainingSeconds % 60).padStart(2, "0")}
+//                                         </span>
+//                                         <span className="text-[11px] font-semibold text-amber-700">Time remaining</span>
+//                                       </div>
+//                                     ) : null}
 //                                   </div>
 //                                 )}
 //                               </div>
@@ -530,6 +554,8 @@ export default function StaffDashboard() {
   const [staffProfile, setStaffProfile] = useState(null);
   const [shopProfile, setShopProfile] = useState(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
+  const [updatingQueueStatus, setUpdatingQueueStatus] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
 
   // UI States for filtering queues and viewing data
   const [selectedQueues, setSelectedQueues] = useState(["ALL"]);
@@ -811,6 +837,121 @@ export default function StaffDashboard() {
     }
   };
 
+  const getAuthToken = () =>
+    useAuthStore.getState().token || localStorage.getItem("accessToken");
+
+  const getShopId = () => shopProfile?.id ?? shopProfile?.shopId;
+
+  // Logout is allowed only when the API confirms there are no waiting tokens.
+  const handleLogout = async () => {
+    if (loggingOut) return;
+
+    const shopId = getShopId();
+    if (!shopId) {
+      alert("Shop information is not available. Please try again.");
+      return;
+    }
+
+    setLoggingOut(true);
+    try {
+      const res = await fetch(
+        `${BASE_URL}/tokens/waiting?shopId=${encodeURIComponent(shopId)}`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${getAuthToken()}`,
+          },
+        }
+      );
+
+      const data = await res.json();
+      if (!res.ok || data?.success === false) {
+        throw new Error(data?.message || "Unable to verify the waiting queue.");
+      }
+
+      // Support APIs returning either { count } or { tokens: [] }.
+      const waitingCount = Number.isFinite(Number(data?.count))
+        ? Number(data.count)
+        : Array.isArray(data?.tokens)
+          ? data.tokens.filter(
+              (item) => String(item.status || "waiting").toLowerCase() === "waiting"
+            ).length
+          : null;
+
+      if (waitingCount === null) {
+        throw new Error("Waiting queue count was not returned by the API.");
+      }
+
+      if (waitingCount !== 0) {
+        alert(`Logout is not allowed. ${waitingCount} token(s) are still waiting in the queue.`);
+        return;
+      }
+
+      logout();
+    } catch (err) {
+      console.error("Unable to verify waiting tokens before logout:", err);
+      alert(err.message || "Unable to verify the waiting queue. Please try again.");
+    } finally {
+      setLoggingOut(false);
+    }
+  };
+
+  // Toggle queue between start and pause using the shop-status API.
+  const handleToggleQueueStatus = async () => {
+    if (updatingQueueStatus) return;
+
+    const shopId = getShopId();
+    if (!shopId) {
+      alert("Shop information is not available. Please try again.");
+      return;
+    }
+
+    const currentStatus = String(
+      shopProfile?.queueStatus ?? shopProfile?.queue_status ?? "start"
+    ).toLowerCase();
+    const nextStatus = currentStatus === "pause" || currentStatus === "paused"
+      ? "start"
+      : "pause";
+
+    setUpdatingQueueStatus(true);
+    try {
+      const res = await fetch(`${BASE_URL}/shops/${shopId}/queue-status`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${getAuthToken()}`,
+        },
+        body: JSON.stringify({ queueStatus: nextStatus }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || data?.success === false) {
+        throw new Error(data?.message || "Unable to update queue status.");
+      }
+
+      const returnedShop = data?.data?.shop ?? data?.shop ?? data?.data;
+      const returnedStatus =
+        returnedShop?.queueStatus ??
+        returnedShop?.queue_status ??
+        data?.queueStatus ??
+        data?.queue_status ??
+        nextStatus;
+
+      setShopProfile((prev) => ({
+        ...prev,
+        ...(returnedShop && typeof returnedShop === "object" ? returnedShop : {}),
+        queueStatus: returnedStatus,
+        queue_status: returnedStatus,
+      }));
+      alert(`Queue ${String(returnedStatus).toLowerCase() === "pause" || String(returnedStatus).toLowerCase() === "paused" ? "paused" : "opened"} successfully.`);
+    } catch (err) {
+      console.error("Error updating queue status:", err);
+      alert(err.message || "Unable to update queue status.");
+    } finally {
+      setUpdatingQueueStatus(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col">
       {/* HEADER */}
@@ -833,12 +974,33 @@ export default function StaffDashboard() {
             <span className="text-slate-600 font-semibold">{date} • {time}</span>
           </div>
 
-          <button
-            onClick={logout}
-            className="h-10 px-5 border border-red-200 rounded-lg bg-white text-red-600 text-xs font-bold tracking-wide hover:bg-red-600 hover:text-white transition-colors duration-200 shadow-sm"
-          >
-            LOGOUT
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleToggleQueueStatus}
+              disabled={updatingQueueStatus || loadingProfile}
+              className={`h-10 px-4 border rounded-lg text-xs font-bold tracking-wide transition-colors duration-200 shadow-sm disabled:opacity-60 ${
+                String(shopProfile?.queueStatus ?? shopProfile?.queue_status ?? "start").toLowerCase() === "pause" ||
+                String(shopProfile?.queueStatus ?? shopProfile?.queue_status ?? "start").toLowerCase() === "paused"
+                  ? "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-600 hover:text-white"
+                  : "border-amber-200 bg-white text-amber-700 hover:bg-amber-500 hover:text-white"
+              }`}
+            >
+              {updatingQueueStatus
+                ? "UPDATING..."
+                : (String(shopProfile?.queueStatus ?? shopProfile?.queue_status ?? "start").toLowerCase() === "pause" ||
+                   String(shopProfile?.queueStatus ?? shopProfile?.queue_status ?? "start").toLowerCase() === "paused")
+                  ? "OPEN QUEUE"
+                  : "PAUSE QUEUE"}
+            </button>
+
+            <button
+              onClick={handleLogout}
+              disabled={loggingOut || loadingProfile}
+              className="h-10 px-5 border border-red-200 rounded-lg bg-white text-red-600 text-xs font-bold tracking-wide hover:bg-red-600 hover:text-white transition-colors duration-200 shadow-sm disabled:opacity-60"
+            >
+              {loggingOut ? "CHECKING..." : "LOGOUT"}
+            </button>
+          </div>
         </div>
       </header>
 
