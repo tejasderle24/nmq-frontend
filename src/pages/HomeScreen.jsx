@@ -106,7 +106,7 @@ export default function HomeScreen() {
             shop.address?.toLowerCase().includes(search)
 
         if (!matchesSearch) return false
-        if (activeFilter === 'open') return shop.status === 'open'
+        if (activeFilter === 'open') return shop.shopStatus === 'open'
         if (activeFilter === 'top') return (shop.rating || 0) >= 4.5
         return true
     })

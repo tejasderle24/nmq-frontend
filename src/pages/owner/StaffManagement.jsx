@@ -291,7 +291,7 @@ export default function StaffManagement({shopId}) {
               />
             </div>
 
-            <select
+            {/* <select
               value={roleFilter}
               onChange={(e) => setRoleFilter(e.target.value)}
               className="h-9 px-2.5 border border-[#ded5cb] rounded-lg bg-white text-xs text-[#2f211b] outline-none cursor-pointer"
@@ -299,7 +299,7 @@ export default function StaffManagement({shopId}) {
               <option value="all">Role: All ({stats.total})</option>
               <option value="counter">Counter Staff ({stats.counter})</option>
               <option value="staff">Service Staff ({stats.service})</option>
-            </select>
+            </select> */}
 
             {(search || roleFilter !== 'all' || activeTab !== 'all') && (
               <button
@@ -471,7 +471,7 @@ export default function StaffManagement({shopId}) {
               </div>
               <div className="flex justify-between py-1 border-b border-[#e7dfd5]">
                 <span className="text-[#8b7c72]">Mobile Number</span>
-                <span className="font-bold text-[#2f211b]">{selectedStaff.mobile}</span>
+                <span className="font-bold text-[#2f211b]">{selectedStaff.phoneNo}</span>
               </div>
               <div className="flex justify-between py-1 border-b border-[#e7dfd5]">
                 <span className="text-[#8b7c72]">Joined Date</span>
