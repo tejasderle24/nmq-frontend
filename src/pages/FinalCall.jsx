@@ -14,7 +14,7 @@ import AdvertisementCarousel from '../components/AdvertisementCarousel'
 import api from '../api/axios'
 import { socket } from '../utils/socket'
 
-const FINAL_CALL_DURATION = 120 // 2 Minutes timer
+const FINAL_CALL_DURATION = 105 // 2 Minutes timer
 
 export default function FinalCall() {
   const navigate = useNavigate()
@@ -23,12 +23,13 @@ export default function FinalCall() {
 
   const [pageReady, setPageReady] = useState(false)
   const [liveToken, setLiveToken] = useState(routeToken || null)
-  const [seconds, setSeconds] = useState(FINAL_CALL_DURATION)
+  const [seconds, setSeconds] = useState(FINAL_CALL_DURATION);
   const [loading, setLoading] = useState(false)
   const [hasConfirmed, setHasConfirmed] = useState(liveToken?.status === 'imhere')
   const [error, setError] = useState('')
   const [timerExpired, setTimerExpired] = useState(false)
   const [showNotArrivedModal, setShowNotArrivedModal] = useState(false)
+
 
   const bellRef = useRef(null)
   const bellIntervalRef = useRef(null)
@@ -94,7 +95,7 @@ export default function FinalCall() {
       const updatedToken = getToken(eventData)
       if (!matchesActiveToken(updatedToken)) return
 
-      console.log("updatedToken",updatedToken)
+      console.log("updatedToken", updatedToken)
 
       setLiveToken(updatedToken)
       stopBell()
@@ -155,24 +156,72 @@ export default function FinalCall() {
   }, [hasConfirmed, showNotArrivedModal])
 
   // Countdown Timer Logic (2 Minutes)
+  // useEffect(() => {
+  //   if (timerExpired || hasConfirmed) return
+
+  //   const countdown = setInterval(() => {
+  //     setSeconds((prev) => {
+  //       if (prev <= 1) {
+  //         clearInterval(countdown)
+  //         stopBell()
+  //         setTimerExpired(true)
+  //         // Do not mark the customer absent automatically. Staff will decide after 2 minutes.
+  //         return 0
+  //       }
+  //       return prev - 1
+  //     })
+  //   }, 1000)
+
+  //   return () => clearInterval(countdown)
+  // }, [timerExpired, hasConfirmed])
+
+  
+  // Countdown Timer Logic - based on backend calledAt timestamp
   useEffect(() => {
-    if (timerExpired || hasConfirmed) return
+    if (hasConfirmed) return;
 
-    const countdown = setInterval(() => {
-      setSeconds((prev) => {
-        if (prev <= 1) {
-          clearInterval(countdown)
-          stopBell()
-          setTimerExpired(true)
-          // Do not mark the customer absent automatically. Staff will decide after 2 minutes.
-          return 0
-        }
-        return prev - 1
-      })
-    }, 1000)
+    const calledAt =
+      liveToken?.calledAt ||
+      liveToken?.called_at;
 
-    return () => clearInterval(countdown)
-  }, [timerExpired, hasConfirmed])
+    if (!calledAt) {
+      console.error("Backend calledAt timestamp missing");
+      return;
+    }
+
+    const startTime = new Date(calledAt).getTime();
+
+    if (!Number.isFinite(startTime)) {
+      console.error("Invalid calledAt timestamp:", calledAt);
+      return;
+    }
+
+    const updateTimer = () => {
+      const elapsedSeconds = Math.floor(
+        (Date.now() - startTime) / 1000
+      );
+
+      const remaining = Math.max(
+        0,
+        FINAL_CALL_DURATION - elapsedSeconds
+      );
+
+      setSeconds(remaining);
+
+      if (remaining <= 0) {
+        setTimerExpired(true);
+        stopBell();
+      }
+    };
+
+    // Calculate immediately when the page opens or reloads
+    updateTimer();
+
+    const interval = setInterval(updateTimer, 1000);
+
+    return () => clearInterval(interval);
+  }, [liveToken?.calledAt, liveToken?.called_at, hasConfirmed]);
+
 
   const handleImHere = async () => {
     if (loading) return
@@ -346,8 +395,8 @@ export default function FinalCall() {
             onClick={handleImHere}
             disabled={loading || hasConfirmed || timerExpired}
             className={`w-full h-14 sm:h-16 mt-6 rounded-2xl text-white font-bold text-base sm:text-lg flex items-center justify-center gap-2.5 shadow-lg transition-all ${loading || hasConfirmed || timerExpired
-                ? 'bg-gray-400 cursor-not-allowed opacity-70'
-                : 'bg-gradient-to-r from-emerald-600 to-emerald-500 cursor-pointer active:scale-[0.98]'
+              ? 'bg-gray-400 cursor-not-allowed opacity-70'
+              : 'bg-gradient-to-r from-emerald-600 to-emerald-500 cursor-pointer active:scale-[0.98]'
               }`}
           >
             {loading ? (
