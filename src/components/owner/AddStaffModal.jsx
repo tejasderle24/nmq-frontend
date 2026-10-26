@@ -8,7 +8,7 @@ export default function AddStaffModal({ isOpen, shopId, staff, onClose }) {
     full_name: staff?.full_name || '',
     email: staff?.email || '',
     phoneNo: staff?.phoneNo || '',
-    role: staff?.subRole || (staff?.role === 'counter' ? 'counter' : 'serving'),
+    role: staff?.subRole || 'counter',
     password: '',
     confirm: '',
   })
