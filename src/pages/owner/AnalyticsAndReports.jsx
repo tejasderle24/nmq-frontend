@@ -792,7 +792,7 @@ export default function AnalyticsAndReports({ shopId: shopIdProp }) {
             });
 
             const baseUrl = import.meta.env.VITE_API_URL;
-            const authToken = localStorage.getItem('accessToken');
+            const authToken = sessionStorage.getItem('accessToken');
             const response = await fetch(`${baseUrl}/analytics/tokens?${params.toString()}`, {
                 headers: {
                     ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),

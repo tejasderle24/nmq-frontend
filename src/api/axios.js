@@ -10,7 +10,7 @@
 // // Attach access token automatically
 // api.interceptors.request.use(
 //   (config) => {
-//     const token = localStorage.getItem("accessToken");
+//     const token = sessionStorage.getItem("accessToken");
 
 //     if (token) {
 //       config.headers.Authorization = `Bearer ${token}`;
@@ -33,7 +33,7 @@ const api = axios.create({
 // Attach access token and handle FormData
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem("accessToken");
+    const token = sessionStorage.getItem("accessToken");
 
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;

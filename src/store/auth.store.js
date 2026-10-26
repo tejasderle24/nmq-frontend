@@ -10,13 +10,13 @@ const REFRESH_TOKEN_KEY = "refreshToken";
 const USER_KEY = "user";
 
 const useAuthStore = create((set) => ({
-  user: JSON.parse(localStorage.getItem(USER_KEY)) || null,
-  accessToken: localStorage.getItem(ACCESS_TOKEN_KEY) || null,
-  refreshToken: localStorage.getItem(REFRESH_TOKEN_KEY) || null,
+  user: JSON.parse(sessionStorage.getItem(USER_KEY)) || null,
+  accessToken: sessionStorage.getItem(ACCESS_TOKEN_KEY) || null,
+  refreshToken: sessionStorage.getItem(REFRESH_TOKEN_KEY) || null,
 
   loading: false,
   error: null,
-  isAuthenticated: !!localStorage.getItem(ACCESS_TOKEN_KEY),
+  isAuthenticated: !!sessionStorage.getItem(ACCESS_TOKEN_KEY),
 
   // =========================
   // LOGIN
@@ -37,17 +37,19 @@ const useAuthStore = create((set) => ({
       } = response.data;
 
       // Save tokens
-      localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
+      sessionStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
 
       if (refreshToken) {
-        localStorage.setItem(
+        sessionStorage.setItem(
           REFRESH_TOKEN_KEY,
           refreshToken
         );
+      } else {
+        sessionStorage.removeItem(REFRESH_TOKEN_KEY);
       }
 
       // Save user
-      localStorage.setItem(
+      sessionStorage.setItem(
         USER_KEY,
         JSON.stringify(user)
       );
@@ -86,7 +88,7 @@ const useAuthStore = create((set) => ({
   refreshAccessToken: async () => {
     try {
       const refreshToken =
-        localStorage.getItem(REFRESH_TOKEN_KEY);
+        sessionStorage.getItem(REFRESH_TOKEN_KEY);
 
       if (!refreshToken) {
         throw new Error("Refresh token not found");
@@ -97,7 +99,7 @@ const useAuthStore = create((set) => ({
 
       const { accessToken } = response.data;
 
-      localStorage.setItem(
+      sessionStorage.setItem(
         ACCESS_TOKEN_KEY,
         accessToken
       );
@@ -109,9 +111,9 @@ const useAuthStore = create((set) => ({
 
       return accessToken;
     } catch (error) {
-      localStorage.removeItem(ACCESS_TOKEN_KEY);
-      localStorage.removeItem(REFRESH_TOKEN_KEY);
-      localStorage.removeItem(USER_KEY);
+      sessionStorage.removeItem(ACCESS_TOKEN_KEY);
+      sessionStorage.removeItem(REFRESH_TOKEN_KEY);
+      sessionStorage.removeItem(USER_KEY);
 
       set({
         user: null,
@@ -130,7 +132,7 @@ const useAuthStore = create((set) => ({
   logout: async () => {
     try {
       const refreshToken =
-        localStorage.getItem(REFRESH_TOKEN_KEY);
+        sessionStorage.getItem(REFRESH_TOKEN_KEY);
 
       if (refreshToken) {
         await logoutApi(refreshToken);
@@ -138,9 +140,9 @@ const useAuthStore = create((set) => ({
     } catch (error) {
       console.error("Logout API error:", error);
     } finally {
-      localStorage.removeItem(ACCESS_TOKEN_KEY);
-      localStorage.removeItem(REFRESH_TOKEN_KEY);
-      localStorage.removeItem(USER_KEY);
+      sessionStorage.removeItem(ACCESS_TOKEN_KEY);
+      sessionStorage.removeItem(REFRESH_TOKEN_KEY);
+      sessionStorage.removeItem(USER_KEY);
 
       set({
         user: null,
@@ -167,13 +169,13 @@ const useAuthStore = create((set) => ({
   // =========================
   initializeAuth: () => {
     const accessToken =
-      localStorage.getItem(ACCESS_TOKEN_KEY);
+      sessionStorage.getItem(ACCESS_TOKEN_KEY);
 
     const refreshToken =
-      localStorage.getItem(REFRESH_TOKEN_KEY);
+      sessionStorage.getItem(REFRESH_TOKEN_KEY);
 
     const user =
-      JSON.parse(localStorage.getItem(USER_KEY)) ||
+      JSON.parse(sessionStorage.getItem(USER_KEY)) ||
       null;
 
     set({

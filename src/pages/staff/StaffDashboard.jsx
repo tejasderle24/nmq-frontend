@@ -95,7 +95,7 @@ export default function StaffDashboard() {
       if (!user?.id) return;
       try {
         setLoadingProfile(true);
-        const token = useAuthStore.getState().token || localStorage.getItem("accessToken");
+        const token = useAuthStore.getState().accessToken;
 
         const res = await fetch(`${BASE_URL}/staff/${user.id}/profile`, {
           method: "GET",
@@ -126,7 +126,7 @@ export default function StaffDashboard() {
     const fetchInitialTokens = async () => {
       if (!shopProfile?.id) return;
       try {
-        const token = useAuthStore.getState().token || localStorage.getItem("accessToken");
+        const token = useAuthStore.getState().accessToken;
         const res = await fetch(`${BASE_URL}/tokens/waiting?shopId=${shopProfile.id}`, {
           headers: {
             "Authorization": `Bearer ${token}`,
@@ -249,7 +249,7 @@ export default function StaffDashboard() {
 
   const handleCallNext = async (queueType) => {
     try {
-      const token = useAuthStore.getState().token || localStorage.getItem("accessToken");
+      const token = useAuthStore.getState().accessToken;
 
       const res = await fetch(`${BASE_URL}/tokens/call-next?shopId=${shopProfile?.id ?? shopProfile?.shopId}&queueType=${encodeURIComponent(queueType)}`, {
         method: "POST",
@@ -281,7 +281,7 @@ export default function StaffDashboard() {
 
   const updateArrivalStatus = async (tokenId, status) => {
     try {
-      const token = useAuthStore.getState().token || localStorage.getItem("accessToken");
+      const token = useAuthStore.getState().accessToken;
 
       const res = await fetch(`${BASE_URL}/tokens/${tokenId}/arrival-status`, {
         method: "PATCH",
