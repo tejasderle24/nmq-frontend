@@ -14,7 +14,7 @@ import AdvertisementCarousel from '../components/AdvertisementCarousel'
 import api from '../api/axios'
 import { socket } from '../utils/socket'
 
-const FINAL_CALL_DURATION = 105 // 2 Minutes timer
+const FINAL_CALL_DURATION = 120 // 2 Minutes timer
 
 export default function FinalCall() {
   const navigate = useNavigate()
@@ -313,7 +313,7 @@ export default function FinalCall() {
                 Your final call timer has expired or you were marked absent. Please contact the front desk or rejoin the queue.
               </p>
               <button
-                onClick={() => navigate('/shop-list')}
+                onClick={() => navigate('/')}
                 className="w-full h-12 bg-amber-800 text-white font-bold rounded-xl hover:bg-amber-900 transition-colors shadow-md"
               >
                 Back to Shops

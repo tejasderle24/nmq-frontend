@@ -102,7 +102,7 @@
 
 //         {/* Back Button */}
 //         <button
-//           onClick={() => navigate('/shop-list')}
+//           onClick={() => navigate('/')}
 //           className="bg-transparent border-none cursor-pointer text-base sm:text-lg font-semibold text-amber-800 mb-3 flex items-center gap-1 hover:underline"
 //         >
 //           ← Browse Shops
@@ -191,7 +191,7 @@
 //               </div>
 //               <button
 //                 type="button"
-//                 onClick={() => navigate('/shop-list')}
+//                 onClick={() => navigate('/')}
 //                 className="w-full h-11 bg-white border-2 border-orange-500 text-orange-600 rounded-xl font-bold text-sm cursor-pointer hover:bg-orange-50 transition-all flex items-center justify-center gap-2 shadow-sm"
 //               >
 //                 🍽 Browse Shops
@@ -327,7 +327,7 @@ export default function CheckToken() {
 
         {/* Back Button */}
         <button
-          onClick={() => navigate('/shop-list')}
+          onClick={() => navigate('/')}
           className="bg-transparent border-none cursor-pointer text-base sm:text-lg font-semibold text-amber-800 mb-3 flex items-center gap-1 hover:underline"
         >
           ← Browse Shops
@@ -409,7 +409,7 @@ export default function CheckToken() {
               </div>
               <button
                 type="button"
-                onClick={() => navigate('/shop-list')}
+                onClick={() => navigate('/')}
                 className="w-full h-11 bg-white border-2 border-orange-500 text-orange-600 rounded-xl font-bold text-sm cursor-pointer hover:bg-orange-50 transition-all flex items-center justify-center gap-2 shadow-sm"
               >
                 🍽 Browse Shops

@@ -78,7 +78,7 @@ export default function CustomerArrived() {
     : '--'
 
   const handleBrowseShops = () => {
-    navigate('/shop-list')
+    navigate('/')
   }
 
   const toggleOption = (option) => {
@@ -338,19 +338,6 @@ export default function CustomerArrived() {
               >
                 {300 - feedback.length} characters remaining
               </div>
-            </div>
-
-            <div className="bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-2xl p-4 shadow-md mt-5 flex items-center justify-between">
-              <div className="flex items-center gap-3 text-left">
-                <Megaphone className="w-6 h-6 shrink-0" />
-                <div>
-                  <h4 className="font-bold text-sm">Special Offer!</h4>
-                  <p className="text-xs text-amber-100">Get 15% off on your next visit dessert.</p>
-                </div>
-              </div>
-              <span className="text-xs font-extrabold bg-white text-orange-600 px-3 py-1.5 rounded-lg shrink-0">
-                CLAIM
-              </span>
             </div>
 
             <button
