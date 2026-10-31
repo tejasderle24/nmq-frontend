@@ -95,8 +95,6 @@ export default function FinalCall() {
       const updatedToken = getToken(eventData)
       if (!matchesActiveToken(updatedToken)) return
 
-      console.log("updatedToken", updatedToken)
-
       setLiveToken(updatedToken)
       stopBell()
 
@@ -175,52 +173,110 @@ export default function FinalCall() {
   //   return () => clearInterval(countdown)
   // }, [timerExpired, hasConfirmed])
 
-  
+
   // Countdown Timer Logic - based on backend calledAt timestamp
-  useEffect(() => {
-    if (hasConfirmed) return;
+  // useEffect(() => {
+  //   if (hasConfirmed) return;
 
-    const calledAt =
-      liveToken?.calledAt ||
-      liveToken?.called_at;
+  //   const calledAt = liveToken?.calledAt;
 
-    if (!calledAt) {
-      console.error("Backend calledAt timestamp missing");
-      return;
+  //   if (!calledAt) {
+  //     console.error("Backend calledAt timestamp missing");
+  //     return;
+  //   }
+
+  //   const startTime = new Date(calledAt).getTime();
+
+  //   if (!Number.isFinite(startTime)) {
+  //     console.error("Invalid calledAt timestamp:", calledAt);
+  //     return;
+  //   }
+
+  //   const updateTimer = () => {
+  //     const elapsedSeconds = Math.floor(
+  //       (Date.now() - startTime) / 1000
+  //     );
+
+  //     console.log(Date.now());
+  //     console.log(new Date().toISOString()); // UTC
+  //     console.log(new Date().toString());    // Local IST
+
+  //     const remaining = Math.max(
+  //       0,
+  //       FINAL_CALL_DURATION - elapsedSeconds
+  //     );
+
+  //     console.log("Backend:", new Date(calledAt).getTime());
+  //     console.log("Browser:", Date.now());
+
+  //     console.log(
+  //       "Difference:",
+  //       (Date.now() - new Date(calledAt).getTime()) / 1000
+  //     );;
+
+  //     setSeconds(remaining);
+
+  //     if (remaining <= 0) {
+  //       setTimerExpired(true);
+  //       stopBell();
+  //     }
+  //   };
+
+  //   // Calculate immediately when the page opens or reloads
+  //   updateTimer();
+
+  //   const interval = setInterval(updateTimer, 1000);
+
+  //   return () => clearInterval(interval);
+  // }, [liveToken?.calledAt, liveToken?.called_at, hasConfirmed]);
+
+  // Countdown Timer - 2 Minutes (IST Adjustment)
+useEffect(() => {
+  if (hasConfirmed) return;
+
+  const calledAt = liveToken?.calledAt;
+
+  if (!calledAt) {
+    console.error("Backend calledAt timestamp missing");
+    return;
+  }
+
+  // Backend IST to UTC timestamp adjustment
+  const IST_OFFSET = 5.5 * 60 * 60 * 1000;
+
+  const startTime =
+    new Date(calledAt).getTime() - IST_OFFSET;
+
+  if (!Number.isFinite(startTime)) {
+    console.error("Invalid calledAt:", calledAt);
+    return;
+  }
+
+  const updateTimer = () => {
+    const elapsedSeconds = Math.floor(
+      (Date.now() - startTime) / 1000
+    );
+
+    const remaining = Math.max(
+      0,
+      FINAL_CALL_DURATION - elapsedSeconds
+    );
+
+    setSeconds(remaining);
+
+    if (remaining <= 0) {
+      setTimerExpired(true);
+      stopBell();
     }
+  };
 
-    const startTime = new Date(calledAt).getTime();
+  updateTimer();
 
-    if (!Number.isFinite(startTime)) {
-      console.error("Invalid calledAt timestamp:", calledAt);
-      return;
-    }
+  const interval = setInterval(updateTimer, 1000);
 
-    const updateTimer = () => {
-      const elapsedSeconds = Math.floor(
-        (Date.now() - startTime) / 1000
-      );
+  return () => clearInterval(interval);
 
-      const remaining = Math.max(
-        0,
-        FINAL_CALL_DURATION - elapsedSeconds
-      );
-
-      setSeconds(remaining);
-
-      if (remaining <= 0) {
-        setTimerExpired(true);
-        stopBell();
-      }
-    };
-
-    // Calculate immediately when the page opens or reloads
-    updateTimer();
-
-    const interval = setInterval(updateTimer, 1000);
-
-    return () => clearInterval(interval);
-  }, [liveToken?.calledAt, liveToken?.called_at, hasConfirmed]);
+}, [liveToken?.calledAt, hasConfirmed]);
 
 
   const handleImHere = async () => {

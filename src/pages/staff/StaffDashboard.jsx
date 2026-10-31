@@ -2,6 +2,11 @@ import React, { useState, useEffect } from "react";
 import useAuthStore from "../../store/auth.store";
 import { socket } from "../../utils/socket";
 
+// Components
+import StaffHeader from "../../components/staff/StaffHeader";
+import StaffSidebar from "../../components/staff/StaffSidebar";
+import QueueSection from "../../components/staff/QueueSection";
+
 const BASE_URL = import.meta.env.VITE_API_URL;
 
 export default function StaffDashboard() {
@@ -15,7 +20,7 @@ export default function StaffDashboard() {
   const [waitingTokens, setWaitingTokens] = useState([]);
   const [pendingArrivals, setPendingArrivals] = useState([]);
   const [timerNow, setTimerNow] = useState(Date.now());
-  const CALL_TIMEOUT_SECONDS = 105;
+  const CALL_TIMEOUT_SECONDS = 120;
 
   const currentDate = new Date();
   const date = currentDate.toLocaleDateString();
@@ -42,7 +47,21 @@ export default function StaffDashboard() {
     const hasActiveCountdown = pendingArrivals.some((token) => {
       const status = String(token.status || "").toLowerCase();
       if (status !== "called") return false;
-      const startedAt = Number(token._callStartedAt) || Date.parse(token.calledAt || token.called_at || "");
+
+      const rawCalledAt = token.calledAt || token.called_at;
+      let parsedCalledAt = 0;
+      if (rawCalledAt) {
+        let fixedDateStr = rawCalledAt;
+        if (typeof fixedDateStr === 'string' && !fixedDateStr.endsWith('Z') && !fixedDateStr.includes('+')) {
+          fixedDateStr += 'Z';
+        }
+        parsedCalledAt = new Date(fixedDateStr).getTime();
+      }
+
+      const startedAt = Number(token._callStartedAt) || parsedCalledAt;
+
+      // Agar fir bhi 5.5 hours ka gap dikh raha hai (yani server aur client time sync nahi hai),
+      // toh aap yahan directly current client time ko hi fallback maan sakte hain jab token call hua ho:
       return startedAt && (timerNow - startedAt) < CALL_TIMEOUT_SECONDS * 1000;
     });
 
@@ -52,23 +71,36 @@ export default function StaffDashboard() {
   }, [pendingArrivals, timerNow]);
 
   // const addCallTimer = (token) => {
+  //   const rawCalledAt = token.calledAt || token.called_at;
+  //   let parsedTime = 0;
+  //   console.log("rawCalledAt", rawCalledAt)
+  //   console.log("Date.now()", Date.now())
+
+  //   if (rawCalledAt) {
+  //     // Agar backend se string aayi hai, ensure karo ki woh UTC / ISO format mein sahi se parse ho
+  //     // Agar uske end mein 'Z' ya offset nahi hai, toh date parse me gadbad ho sakti hai.
+  //     let fixedDateStr = rawCalledAt;
+  //     if (typeof fixedDateStr === 'string' && !fixedDateStr.endsWith('Z') && !fixedDateStr.includes('+')) {
+  //       fixedDateStr += 'Z'; // Force UTC agar timezone missing hai
+  //     }
+  //     parsedTime = new Date(fixedDateStr).getTime();
+  //   }
+
   //   return {
   //     ...token,
-  //     // Start the countdown immediately when the frontend receives the call event.
-  //     // Do not wait for calledAt from the API/server, which can arrive late or be inconsistent.
-  //     // _callStartedAt: Number(token?._callStartedAt) || Date.now(),
+  //     _callStartedAt: Number(token?._callStartedAt) || parsedTime || Date.now(),
   //   };
   // };
 
-  const addCallTimer = (token) => ({
-    ...token,
-    // Saved backend timestamp use karo; refresh par naya time mat banao.
-    _callStartedAt:
-      Number(token?._callStartedAt) ||
-      (token?.calledAt || token?.called_at
-        ? new Date(token.calledAt || token.called_at).getTime()
-        : 0),
-  });
+
+  const addCallTimer = (token) => {
+      // Agar pehle se _callStartedAt set nahi hai, toh abhi ka exact client time do
+      // Taaki UTC/IST ka 5.5 hours ka gap kabhi aaye hi na!
+      return {
+        ...token,
+        _callStartedAt: Number(token?._callStartedAt) || Date.now(),
+      };
+    };
 
   const toggleQueue = (queueKey) => {
     if (queueKey === "ALL") {
@@ -218,7 +250,6 @@ export default function StaffDashboard() {
         }
         return [...prev, token];
       });
-      // status becomes imhere, so the 2-minute countdown stops and the buttons appear.
     };
 
     const handleArrivalUpdated = (payload) => {
@@ -262,6 +293,11 @@ export default function StaffDashboard() {
       if (data.success) {
         const calledToken = addCallTimer(data.data);
         setTimerNow(Date.now());
+        console.log("=======================================================");
+
+        console.log("calledToken", calledToken)
+        console.log(setTimerNow, "setTimerNow");
+
         setPendingArrivals((prev) => {
           if (prev.some((t) => String(t.id) === String(calledToken.id))) {
             return prev.map((t) => String(t.id) === String(calledToken.id)
@@ -303,257 +339,41 @@ export default function StaffDashboard() {
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col">
       {/* HEADER */}
-      <header className="w-full bg-white border-b border-slate-200 px-4 md:px-8 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4 sticky top-0 z-30 shadow-sm">
-        <div className="flex flex-col">
-          <div className="flex items-center gap-2 text-emerald-600 text-xs font-extrabold tracking-wider mb-1">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-            LIVE COUNTER SOCKET CONNECTED
-          </div>
-          <h1 className="text-xl md:text-2xl font-extrabold text-slate-900 leading-tight">
-            {shopProfile?.name || "Loading Shop..."}
-          </h1>
-          <p className="text-xs md:text-sm text-slate-500">
-            Counter Staff: <strong className="text-slate-700">{staffProfile?.name || user?.name || "Staff"}</strong>
-          </p>
-        </div>
-
-        <div className="flex items-center justify-between md:justify-end gap-6 border-t md:border-t-0 pt-3 md:pt-0 border-slate-100">
-          <div className="flex flex-col items-start md:items-end text-xs text-slate-400">
-            <span className="text-slate-600 font-semibold">{date} • {time}</span>
-          </div>
-
-          <button
-            onClick={logout}
-            className="h-10 px-5 border border-red-200 rounded-lg bg-white text-red-600 text-xs font-bold tracking-wide hover:bg-red-600 hover:text-white transition-colors duration-200 shadow-sm"
-          >
-            LOGOUT
-          </button>
-        </div>
-      </header>
+      <StaffHeader
+        shopProfile={shopProfile}
+        staffProfile={staffProfile}
+        user={user}
+        date={date}
+        time={time}
+        logout={logout}
+      />
 
       {/* BODY LAYOUT: ASIDE + MAIN */}
       <div className="flex-1 flex flex-col md:flex-row">
         {/* ASIDE NAVIGATION */}
-        <aside className="w-full md:w-56 bg-white border-b md:border-b-0 md:border-r border-slate-200 p-3 md:p-5 flex md:flex-col overflow-x-auto md:overflow-y-auto gap-2 md:gap-1 shrink-0">
-          <div className="hidden md:block text-[11px] font-extrabold text-slate-400 tracking-wider uppercase px-3 mb-2">
-            Queues Filter
-          </div>
-
-          <button
-            onClick={() => toggleQueue("ALL")}
-            className={`flex-shrink-0 md:w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-bold transition-all ${selectedQueues.includes("ALL") ? "bg-blue-50 text-blue-600" : "text-slate-600 hover:bg-slate-50"
-              }`}
-          >
-            <span className="w-2 h-2 rounded-full bg-slate-500" />
-            <span>ALL</span>
-          </button>
-
-          {queuesList.map((q) => (
-            <button
-              key={q.key}
-              onClick={() => toggleQueue(q.key)}
-              className={`flex-shrink-0 md:w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-bold transition-all ${selectedQueues.includes(q.key) ? "bg-blue-50 text-blue-600" : "text-slate-600 hover:bg-slate-50"
-                }`}
-            >
-              <span className={`w-2 h-2 rounded-full bg-${q.color}-500`} />
-              <span>{q.name}</span>
-            </button>
-          ))}
-        </aside>
+        <StaffSidebar
+          queuesList={queuesList}
+          selectedQueues={selectedQueues}
+          toggleQueue={toggleQueue}
+        />
 
         {/* MAIN CONTENT AREA */}
         <main className="flex-1 p-4 md:p-8 space-y-6 max-w-7xl mx-auto w-full">
-          {/* Queue Sections List */}
           <div className="flex flex-col gap-6">
             {queuesList.map(
               (q) =>
                 isQueueVisible(q.key) && (
-                  <div key={q.key} className="w-full bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
-                    {/* Queue Header & Call Next Button */}
-                    <div className="p-4 flex flex-wrap items-center justify-between gap-4 border-b border-slate-100">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-lg bg-slate-100 text-slate-800 flex items-center justify-center font-black text-xs">
-                          {q.key}
-                        </div>
-                        <div>
-                          <h2 className="text-base font-bold text-slate-800">{q.name}</h2>
-                          <p className="text-xs text-slate-400">Manage queue tokens</p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-3">
-                        <div className="h-10 px-3 bg-slate-50 rounded-lg flex items-center gap-2 text-slate-700">
-                          <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Waiting</span>
-                          <strong className="text-lg font-black">{counts[q.key]}</strong>
-                        </div>
-
-                        <button
-                          onClick={() => handleCallNext(q.key)}
-                          className="h-10 px-5 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white text-xs font-bold rounded-lg transition-all shadow-sm"
-                        >
-                          CALL NEXT 📢
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Waiting Tokens Grid */}
-                    <div className="p-4 bg-slate-50/50 border-b border-slate-100">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-[10px] font-extrabold text-slate-400 tracking-wider uppercase">
-                          Next in Line
-                        </span>
-                        <small className="text-[10px] text-slate-400">
-                          {waitingTokens.filter((t) => {
-                            const qType = (t.queue_type || t.queueType || "").toUpperCase();
-                            return qType === q.key;
-                          }).length} Remaining
-                        </small>
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2">
-                        {waitingTokens
-                          .filter((t) => {
-                            const qType = (t.queue_type || t.queueType || "").toUpperCase();
-                            return qType === q.key;
-                          })
-                          .map((token) => (
-                            <div key={token.id} className="min-w-0 border border-slate-200 rounded-lg bg-white p-3 text-xs shadow-2xs">
-                              <div className="flex items-center justify-between gap-2">
-                                <strong className="text-sm font-bold text-slate-800">
-                                  Token #{token.token_no || token.tokenNo}
-                                </strong>
-                                <span className="rounded bg-emerald-50 px-2 py-1 text-[10px] font-bold uppercase text-emerald-700">
-                                  {token.status || "waiting"}
-                                </span>
-                              </div>
-                              <p className="mt-1 truncate font-semibold text-slate-700">
-                                {token.customer_name || token.name}
-                              </p>
-                              <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-slate-500">
-                                {(token.group_size != null || token.groupSize != null) && (
-                                  <span>{token.group_size || token.groupSize} people</span>
-                                )}
-                              </div>
-                            </div>
-                          ))}
-
-                        {waitingTokens.filter((t) => {
-                          const qType = (t.queue_type || t.queueType || "").toUpperCase();
-                          return qType === q.key;
-                        }).length === 0 && (
-                            <div className="col-span-full text-xs text-slate-400 italic py-2">No tokens waiting</div>
-                          )}
-                      </div>
-                    </div>
-
-                    {/* Pending Arrivals / Arrived / Not Arrived Section Scoped to this Queue */}
-                    <div className="p-4">
-                      <h3 className="text-xs font-extrabold text-slate-400 tracking-wider uppercase mb-3">
-                        Currently Called / Pending Arrival
-                      </h3>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        {pendingArrivals
-                          .filter((t) => {
-                            const qType = (t.queue_type || t.queueType || "").toUpperCase();
-                            return qType === q.key;
-                          })
-                          .map((token) => {
-                            const status = String(token.status || "").toLowerCase();
-                            const isImHere = status === "imhere" || status === "im-here";
-                            const isCalled = status === "called";
-                            const customerConfirmed = token.customerConfirm === true || token.customer_confirm === true;
-                            const callStartedAt =
-                              Number(token._callStartedAt) ||
-                              (token.calledAt || token.called_at
-                                ? new Date(token.calledAt || token.called_at).getTime()
-                                : 0);
-
-                            const elapsedSeconds = callStartedAt
-                              ? Math.floor((timerNow - callStartedAt) / 1000)
-                              : 0;
-
-                            const remainingSeconds = Math.max(
-                              0,
-                              CALL_TIMEOUT_SECONDS - elapsedSeconds
-                            );
-
-                            const timerExpired =
-                              isCalled && callStartedAt > 0 && remainingSeconds <= 0;
-                            const canFinalize = isImHere || timerExpired;
-                            return (
-                              <div
-                                key={token.id}
-                                className={`p-3 border rounded-lg flex flex-col justify-between gap-3 shadow-2xs ${isImHere ? "border-emerald-300 bg-emerald-50/40" : "border-amber-200 bg-amber-50/30"
-                                  }`}
-                              >
-                                <div className="flex items-center justify-between">
-                                  <div className="grid grid-cols-3 gap-2 text-xs flex-1">
-                                    <div>
-                                      <span className="block text-[10px] font-bold text-slate-400">TOKEN</span>
-                                      <strong className={`${isCalled ? "text-2xl" : "text-base"} font-black text-blue-600`}>{token.token_no || token.tokenNo}</strong>
-                                    </div>
-                                    <div>
-                                      <span className="block text-[10px] font-bold text-slate-400">CUSTOMER</span>
-                                      <strong className="text-slate-700 truncate block">{token.customer_name || token.name}</strong>
-                                    </div>
-                                    <div>
-                                      <span className="block text-[10px] font-bold text-slate-400">GROUP SIZE</span>
-                                      <strong className="text-slate-700">{token.group_size ?? token.groupSize ?? "-"}</strong>
-                                    </div>
-                                  </div>
-                                </div>
-
-                                {canFinalize ? (
-                                  <>
-                                    <p className={`text-center text-sm font-extrabold ${isImHere && customerConfirmed ? "text-emerald-700" : "text-red-600"}`}>
-                                      {isImHere
-                                        ? (customerConfirmed ? "Customer Confirmed the Token" : "Customer is here")
-                                        : "Customer Not Confirmed the Token"}
-                                    </p>
-                                    <div className="flex items-center gap-2 pt-2 border-t border-slate-200">
-                                      <button
-                                        onClick={() => updateArrivalStatus(token.id, "arrived")}
-                                        className="flex-1 h-9 border border-emerald-400 bg-emerald-600 text-white hover:bg-emerald-700 active:scale-95 rounded-md text-xs font-bold transition-all shadow-xs"
-                                      >
-                                        ARRIVED ✅
-                                      </button>
-
-                                      <button
-                                        onClick={() => updateArrivalStatus(token.id, "not_arrived")}
-                                        className="flex-1 h-9 border border-red-300 bg-red-50 text-red-600 hover:bg-red-100 active:scale-95 rounded-md text-xs font-bold transition-all"
-                                      >
-                                        NOT ARRIVED ❌
-                                      </button>
-                                    </div>
-                                  </>
-                                ) : (
-                                  <div className="pt-2 border-t border-slate-200 text-center">
-                                    {isCalled ? (
-                                      <div className="flex flex-col items-center gap-1">
-                                        <span className="text-lg font-extrabold tabular-nums text-amber-800">
-                                          {Math.floor(remainingSeconds / 60)}:{String(remainingSeconds % 60).padStart(2, "0")}
-                                        </span>
-                                        <span className="text-[11px] font-semibold text-amber-700">Time remaining</span>
-                                      </div>
-                                    ) : null}
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })}
-
-                        {pendingArrivals.filter((t) => {
-                          const qType = (t.queue_type || t.queueType || "").toUpperCase();
-                          return qType === q.key;
-                        }).length === 0 && (
-                            <div className="col-span-full p-4 border border-dashed border-slate-200 rounded-lg text-center text-xs text-slate-400">
-                              No tokens called yet for this queue.
-                            </div>
-                          )}
-                      </div>
-                    </div>
-                  </div>
+                  <QueueSection
+                    key={q.key}
+                    q={q}
+                    counts={counts}
+                    waitingTokens={waitingTokens}
+                    pendingArrivals={pendingArrivals}
+                    timerNow={timerNow}
+                    CALL_TIMEOUT_SECONDS={CALL_TIMEOUT_SECONDS}
+                    handleCallNext={handleCallNext}
+                    updateArrivalStatus={updateArrivalStatus}
+                  />
                 )
             )}
           </div>

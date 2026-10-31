@@ -491,6 +491,11 @@ export default function ConfirmDetails() {
         if (!shopData?.id) {
           throw new Error("Shop not found.");
         }
+        
+        if (shopData?.status === "inactive") {
+          navigate("/");
+          return;
+        }
 
         setShop(shopData);
       } catch (error) {
